@@ -2,8 +2,8 @@ export const DEFAULT_SALES_STATUS = 'pending';
 
 export const SALES_STATUS_LABELS = {
   all: 'All',
-  pending: 'New',
-  connected: 'Connected',
+  pending: 'Pending',
+  connected: 'Complete',
   rejected: 'Rejected',
   hold: 'Holding',
   notConnected: 'Not Connected',
