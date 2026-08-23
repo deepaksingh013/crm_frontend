@@ -33,12 +33,13 @@ const MainLayout = ({ children }) => {
       <div className={`flex min-h-screen min-w-0 flex-col bg-[var(--bg)] transition-[margin] duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[82px]' : 'md:ml-[280px]'}`}>
         <Header
           sidebarOpen={sidebarOpen}
+          sidebarCollapsed={sidebarCollapsed}
           toggleSidebar={() =>
             setSidebarOpen((prev) => !prev)
           }
         />
 
-        <main className="layout-main min-w-0 flex-1 px-4 py-5 sm:px-6 md:px-8 md:py-7">
+        <main className="layout-main min-w-0 flex-1 px-4 pb-5 pt-[100px] sm:px-6 md:px-8 md:pb-7 md:pt-[108px]">
           <div className="mx-auto w-full max-w-[1600px]">
             {children}
           </div>

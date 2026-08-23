@@ -1,53 +1,46 @@
 import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import Cookies from "js-cookie";
-import CampaingCard from "./CampaingCard"
+import CampaingCard from "./CampaingCard";
 
-const API_URL =
-  "https://crm-backend-5-iocr.onrender.com/api";
+const API_URL ="https://crm-backend-5-iocr.onrender.com/api";
 
 export default function TcDashboard() {
   const [campaigns, setCampaigns] = useState([]);
+  const [summary, setSummary] = useState({
+    totalCampaigns: 0,
+    totalLeads: 0,
+    totalPending: 0,
+    totalComplete: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const summaryCards = [
     {
       title: "Total Campaigns",
-      value: campaigns.length,
+      value: summary.totalCampaigns,
       subtitle: "Active campaigns",
       accent: "from-sky-500 to-cyan-500",
       icon: "🎯",
     },
     {
       title: "Total Leads",
-      value: campaigns.reduce(
-        (sum, campaign) =>
-          sum + Number(campaign.totalLeads ?? 0),
-        0
-      ),
+      value: summary.totalLeads,
       subtitle: "Across all campaigns",
       accent: "from-violet-500 to-purple-500",
       icon: "📊",
     },
     {
       title: "Pending",
-      value: campaigns.reduce(
-        (sum, campaign) =>
-          sum + Number(campaign.pending ?? 0),
-        0
-      ),
+      value: summary.totalPending,
       subtitle: "Follow-up needed",
       accent: "from-amber-500 to-orange-500",
       icon: "⏳",
     },
     {
       title: "Completed",
-      value: campaigns.reduce(
-        (sum, campaign) =>
-          sum + Number(campaign.complete ?? 0),
-        0
-      ),
+      value: summary.totalComplete,
       subtitle: "Successful calls",
       accent: "from-emerald-500 to-green-500",
       icon: "✅",
@@ -78,63 +71,22 @@ export default function TcDashboard() {
       const config = getAuthHeaders();
 
       const response = await axios.get(
-        `${API_URL}/campaigns`,
+        `${API_URL}/campaigns/lead-summary/user`,
         config
       );
 
-      console.log(
-        "Campaign API Response:",
-        response.data
-      );
-
-      /*
-       * Backend response:
-       *
-       * {
-       *   campaigns: [...]
-       * }
-       *
-       * OR
-       *
-       * [...]
-       *
-       * OR
-       *
-       * {
-       *   data: [...]
-       * }
-       */
-
       const responseData = response.data;
+      const campaignList = Array.isArray(responseData?.campaignWiseSummary)
+        ? responseData.campaignWiseSummary
+        : [];
 
-      let campaignList = [];
+      setSummary(responseData?.summary || {});
 
-      if (Array.isArray(responseData)) {
-        campaignList = responseData;
-      } else if (
-        Array.isArray(responseData?.campaigns)
-      ) {
-        campaignList = responseData.campaigns;
-      } else if (
-        Array.isArray(responseData?.data)
-      ) {
-        campaignList = responseData.data;
-      } else if (
-        Array.isArray(responseData?.results)
-      ) {
-        campaignList = responseData.results;
-      }
-
-      console.log(
-        "Campaign List:",
-        campaignList
-      );
-
-      /*
-       * Normalize campaign data
-       */
       const normalizedCampaigns =
-        campaignList.map((item) => ({
+        campaignList.map((item) => {
+          const statusCount = item.statusCount || item.statusCounts || {};
+
+          return {
           id:
             item._id ??
             item.id ??
@@ -153,12 +105,18 @@ export default function TcDashboard() {
             item.total_leads ??
             item.total ??
             item.totalLead ??
-            0,
+            Object.values(statusCount).reduce(
+              (sum, count) => sum + Number(count || 0),
+              0
+            ),
 
           pending:
             item.pending ??
             item.pendingLeads ??
             item.pending_leads ??
+            statusCount.pending ??
+            statusCount.new ??
+            statusCount.newLeads ??
             0,
 
           complete:
@@ -167,18 +125,24 @@ export default function TcDashboard() {
             item.completeLeads ??
             item.completedLeads ??
             item.complete_leads ??
+            statusCount.complete ??
+            statusCount.completed ??
             0,
 
           rejected:
             item.rejected ??
             item.rejectedLeads ??
             item.rejected_leads ??
+            statusCount.rejected ??
+            statusCount.reject ??
             0,
 
           holding:
             item.holding ??
             item.holdingLeads ??
             item.holding_leads ??
+            statusCount.holding ??
+            statusCount.hold ??
             0,
 
           notConnected:
@@ -186,23 +150,16 @@ export default function TcDashboard() {
             item.not_connected ??
             item.notConnectedLeads ??
             item.not_connected_leads ??
+            statusCount.notConnected ??
+            statusCount.not_connected ??
             0,
 
           originalData: item,
-        }));
-
-      console.log(
-        "Normalized Campaigns:",
-        normalizedCampaigns
-      );
+          };
+        });
 
       setCampaigns(normalizedCampaigns);
     } catch (err) {
-      console.error(
-        "Campaign API Error:",
-        err
-      );
-
       if (err.response?.status === 401) {
         setError(
           "Unauthorized. Your session may have expired. Please login again."
@@ -226,9 +183,6 @@ export default function TcDashboard() {
   return (
     <main className="min-h-screen bg-[#f5f7fa]">
       <div className="mx-auto min-h-screen w-full max-w-[1400px] px-3 py-5 sm:px-5 sm:py-7 md:px-7 lg:px-10">
-
-        {/* ================= HEADER ================= */}
-
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-gray-800 sm:text-3xl">
             Campaign Details
@@ -263,8 +217,6 @@ export default function TcDashboard() {
           </div>
         )}
 
-        {/* ================= LOADING ================= */}
-
         {loading && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-5 xl:grid-cols-3">
             {Array.from({ length: 6 }).map(
@@ -276,8 +228,6 @@ export default function TcDashboard() {
             )}
           </div>
         )}
-
-        {/* ================= ERROR ================= */}
 
         {!loading && error && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-5 sm:p-6">
@@ -303,8 +253,6 @@ export default function TcDashboard() {
             </div>
           </div>
         )}
-
-        {/* ================= EMPTY ================= */}
 
         {!loading &&
           !error &&
@@ -337,8 +285,6 @@ export default function TcDashboard() {
               </p>
             </div>
           )}
-
-        {/* ================= CAMPAIGNS ================= */}
 
         {!loading &&
           !error &&
@@ -388,8 +334,6 @@ function DashboardStatCard({ title, value, subtitle, accent, icon }) {
     </div>
   );
 }
-
-/* ================= SKELETON ================= */
 
 function DashboardCardSkeleton() {
   return (

@@ -1,7 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import {
-  createSalesManagementRoute,
-} from "../salesManagment/salesManagementRoutes";
+import {createSalesManagementRoute,} from "../salesManagment/salesManagementRoutes";
 
 const CampaignCard = ({ campaign }) => {
   const navigate = useNavigate();
@@ -20,17 +18,14 @@ const CampaignCard = ({ campaign }) => {
       onClick={handleCardClick}
       className="group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
     >
-      {/* Top Gradient */}
       <div className="absolute left-0 right-0 top-0 h-[3px] bg-gradient-to-r from-teal-700 to-purple-600" />
 
       <div className="p-5 sm:p-6">
 
-        {/* Campaign Name */}
         <h2 className="truncate pr-2 text-base font-bold text-gray-800 sm:text-lg">
           {campaign.name}
         </h2>
 
-        {/* Total Leads */}
         <div className="mt-2 flex items-baseline gap-2">
           <span className="text-3xl font-bold leading-none text-teal-700 sm:text-[32px]">
             {campaign.totalLeads}
@@ -43,7 +38,6 @@ const CampaignCard = ({ campaign }) => {
 
         <div className="my-4 border-t border-gray-100" />
 
-        {/* Status */}
         <div className="grid grid-cols-2 gap-2">
           <StatusBox
             label="Pending"

@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import LeadStatusUpdateModal from './LeadStatusUpdateModal';
-import { toast } from 'react-hot-toast';
 import {createSalesManagementRoute, DEFAULT_SALES_STATUS, normalizeSalesStatus, resolveSalesManagementTarget, SALES_STATUS_LABELS,} from './salesManagementRoutes';
 
 const API_URL ='https://crm-backend-5-iocr.onrender.com/api';
@@ -59,14 +58,14 @@ const getApiStatusParam = (status) => {
   }
 
   const statusMap = {
-    pending: 'new',
-    connected: 'Connected',
-    rejected: 'Rejected',
+    pending: 'Pending',
+    connected: 'Complete',
+    rejected: 'Reject',
     hold: 'Holding',
     notConnected: 'Not Connected',
   };
 
-  return statusMap[normalized] || 'new';
+  return statusMap[normalized] || 'Pending';
 };
 
 const SalesManagment = () => {
@@ -85,7 +84,6 @@ const SalesManagment = () => {
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const getLeadValue = useCallback(
     (lead, keys, fallback = 'N/A') => {
@@ -114,67 +112,77 @@ const SalesManagment = () => {
     }
 
     try {
-      const response = await axios.get(`${API_URL}/campaigns`, {
+      const response = await axios.get(`${API_URL}/campaigns/lead-summary/user`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       const responseData = response.data;
-      let campaignList = [];
-
-      if (Array.isArray(responseData)) {
-        campaignList = responseData;
-      } else if (Array.isArray(responseData?.campaigns)) {
-        campaignList = responseData.campaigns;
-      } else if (Array.isArray(responseData?.data)) {
-        campaignList = responseData.data;
-      } else if (Array.isArray(responseData?.results)) {
-        campaignList = responseData.results;
-      }
+      const campaignList = Array.isArray(responseData?.campaignWiseSummary)
+        ? responseData.campaignWiseSummary
+        : [];
 
       setCampaigns(
-        campaignList.map((item) => ({
-          id: item._id ?? item.id ?? item.campaignId ?? item.campaign_id,
-          name:
-            item.title ??
-            item.name ??
-            item.campaignName ??
-            item.campaign_name ??
-            'Unnamed Campaign',
-          pending:
-            item.pending ??
-            item.pendingLeads ??
-            item.pending_leads ??
-            0,
-          complete:
-            item.complete ??
-            item.completed ??
-            item.completeLeads ??
-            item.completedLeads ??
-            item.complete_leads ??
-            0,
-          rejected:
-            item.rejected ??
-            item.rejectedLeads ??
-            item.rejected_leads ??
-            0,
-          holding:
-            item.holding ??
-            item.holdingLeads ??
-            item.holding_leads ??
-            0,
-          notConnected:
-            item.notConnected ??
-            item.not_connected ??
-            item.notConnectedLeads ??
-            item.not_connected_leads ??
-            0,
-          totalLeads:
-            item.totalLeads ??
-            item.total_leads ??
-            item.total ??
-            item.totalLead ??
-            0,
-        }))
+        campaignList.map((item) => {
+          const statusCount = item.statusCount || item.statusCounts || {};
+
+          return {
+            id: item._id ?? item.id ?? item.campaignId ?? item.campaign_id,
+            name:
+              item.title ??
+              item.name ??
+              item.campaignName ??
+              item.campaign_name ??
+              'Unnamed Campaign',
+            pending:
+              item.pending ??
+              item.pendingLeads ??
+              item.pending_leads ??
+              statusCount.pending ??
+              statusCount.new ??
+              statusCount.newLeads ??
+              0,
+            complete:
+              item.complete ??
+              item.completed ??
+              item.completeLeads ??
+              item.completedLeads ??
+              item.complete_leads ??
+              statusCount.complete ??
+              statusCount.completed ??
+              0,
+            rejected:
+              item.rejected ??
+              item.rejectedLeads ??
+              item.rejected_leads ??
+              statusCount.rejected ??
+              statusCount.reject ??
+              0,
+            holding:
+              item.holding ??
+              item.holdingLeads ??
+              item.holding_leads ??
+              statusCount.holding ??
+              statusCount.hold ??
+              0,
+            notConnected:
+              item.notConnected ??
+              item.not_connected ??
+              item.notConnectedLeads ??
+              item.not_connected_leads ??
+              statusCount.notConnected ??
+              statusCount.not_connected ??
+              0,
+            totalLeads:
+              item.totalLeads ??
+              item.total_leads ??
+              item.total ??
+              item.totalLead ??
+              Object.values(statusCount).reduce(
+                (sum, count) => sum + Number(count || 0),
+                0
+              ),
+          };
+        })
       );
     } catch (err) {
       const message =
@@ -257,6 +265,7 @@ const SalesManagment = () => {
       return;
     }
 
+    fetchCampaigns();
     fetchLeads();
   }, [campaignId, fetchCampaigns, fetchLeads, showCampaignPicker]);
 
@@ -281,110 +290,8 @@ const SalesManagment = () => {
   };
 
   const closeStatusModal = () => {
-    if (updatingStatus) return;
-
     setIsModalOpen(false);
     setSelectedLead(null);
-  };
-
-  const handleStatusUpdate = async (formData) => {
-    if (!campaignId || !selectedLead) return;
-
-    const leadId = selectedLead._id || selectedLead.id;
-
-    if (!leadId) {
-      setError('Lead ID is missing.');
-      return;
-    }
-
-    const token = Cookies.get('token');
-
-    if (!token) {
-      setError('Authentication token not found. Please log in again.');
-      return;
-    }
-
-    setUpdatingStatus(true);
-    setError('');
-
-    try {
-      const payload = {
-        status: formData.status,
-        leadStatus: formData.leadStatus,
-        customerName: formData.customerName,
-        customerPhone: formData.customerPhone,
-        alternateNumber: formData.alternateNumber,
-        pincode: formData.pincode,
-        address: formData.address,
-        product: formData.product,
-        amount: formData.amount,
-        holdDate: formData.holdDate,
-        reason: formData.reason,
-        remark: formData.remark,
-      };
-
-      await axios.patch(
-        `${API_URL}/campaigns/${campaignId}/leads/${leadId}`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      setLeads((previousLeads) =>
-        previousLeads
-          .map((lead) => {
-            const currentLeadId = lead._id || lead.id;
-
-            if (currentLeadId !== leadId) {
-              return lead;
-            }
-
-            const nextStatus =
-              formData.status ||
-              formData.leadStatus ||
-              lead.status ||
-              lead.leadStatus;
-
-            return {
-              ...lead,
-              status: nextStatus,
-              leadStatus: nextStatus,
-              customerName: formData.customerName || lead.customerName || lead.name,
-              name: formData.customerName || lead.name || lead.customerName,
-              phone: formData.customerPhone || lead.phone || lead.mobile,
-              mobile: formData.customerPhone || lead.mobile || lead.phone,
-              alternateNumber: formData.alternateNumber || lead.alternateNumber,
-              pincode: formData.pincode || lead.pincode,
-              address: formData.address || lead.address,
-              product: formData.product || lead.product,
-              amount: formData.amount || lead.amount,
-              holdDate: formData.holdDate || lead.holdDate,
-              reason: formData.reason || lead.reason,
-              remark: formData.remark || lead.remark,
-              updatedAt: new Date().toISOString(),
-            };
-          })
-      );
-
-      setIsModalOpen(false);
-      setSelectedLead(null);
-      toast.success('Lead updated successfully');
-    } catch (err) {
-      const message =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        'Failed to update lead status.';
-
-      setError(message);
-      toast.error(message);
-    } finally {
-      setUpdatingStatus(false);
-    }
   };
 
   const openCampaign = (campaign) => {
@@ -514,9 +421,6 @@ const SalesManagment = () => {
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-gray-800">Lead Details</h2>
-              <p className="mt-1 text-xs text-gray-400">
-                Campaign: {selectedCampaign?.name || campaignId}
-              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -639,8 +543,7 @@ const SalesManagment = () => {
         isOpen={isModalOpen}
         lead={selectedLead}
         onClose={closeStatusModal}
-        onUpdate={handleStatusUpdate}
-        isUpdating={updatingStatus}
+        onUpdateSuccess={fetchLeads}
         campaignId={campaignId}
       />
     </main>

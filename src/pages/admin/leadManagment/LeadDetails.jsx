@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Search, ArrowLeft, Upload, Loader2 } from 'lucide-react'
 import ImportCampaignModal from './ImportCampaignModal'
@@ -6,7 +6,7 @@ import AssignModal from './AssignModal'
 import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
 
-const API_BASE_URL = 'https://crm-backend-5-iocr.onrender.com/api'
+const API_BASE_URL ='https://crm-backend-5-iocr.onrender.com/api'
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
@@ -24,16 +24,16 @@ const formatDate = (dateString) => {
   })
 }
 
-const getCampaignTitle = (campaignValue) => {
-  if (!campaignValue || typeof campaignValue !== 'object') {
+const getCampaignTitle = (campaign) => {
+  if (!campaign || typeof campaign !== 'object') {
     return 'Campaign'
   }
 
   return (
-    campaignValue.title ||
-    campaignValue.name ||
-    campaignValue.campaignName ||
-    campaignValue.heading ||
+    campaign.title ||
+    campaign.name ||
+    campaign.campaignName ||
+    campaign.heading ||
     'Campaign'
   )
 }
@@ -56,201 +56,166 @@ const LeadDetails = () => {
   const [filterQuery, setFilterQuery] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
+  const [assignedFilter, setAssignedFilter] = useState('unassigned')
+  const [totalLeads, setTotalLeads] = useState(0)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalLeads, setTotalLeads] = useState(0)
 
-  const [assignedFilter, setAssignedFilter] =
-    useState('unassigned')
-  const fetchLeads = useCallback(
-    async (page = 1, assigned = 'unassigned') => {
-      if (!campaignId) return
+  
+  const fetchLeads = useCallback(async () => {
+    if (!campaignId) return
 
-      setLoading(true)
-      setError(null)
+    setLoading(true)
+    setError(null)
 
-      const token = Cookies.get('token')
+    const token = Cookies.get('token')
 
-      if (!token) {
-        setError(
-          'Authorization token not found. Please log in again.'
-        )
-        setLoading(false)
-        return
+    if (!token) {
+      setError(
+        'Authorization token not found. Please log in again.'
+      )
+      setLoading(false)
+      return
+    }
+
+    try {
+      const params = new URLSearchParams()
+
+      if (assignedFilter !== 'all') {
+        params.append('assigned', assignedFilter)
       }
 
-      try {
-        const params = new URLSearchParams()
-        params.append('page', page)
-        params.append('limit', pageSize)
-        if (assigned && assigned !== 'all') {
-          params.append('assigned', assigned)
-        }
+      if (filterQuery.trim()) {
+        params.append(
+          'search',
+          filterQuery.trim()
+        )
+      }
 
-        if (filterQuery.trim()) {
-          params.append(
-            'search',
-            filterQuery.trim()
-          )
-        }
+      if (fromDate) {
+        params.append('fromDate', fromDate)
+      }
 
-        if (fromDate) {
-          params.append('fromDate', fromDate)
-        }
+      if (toDate) {
+        params.append('toDate', toDate)
+      }
 
-        if (toDate) {
-          params.append('toDate', toDate)
-        }
+      const queryString = params.toString()
 
-        const url =`${API_BASE_URL}/campaigns/${campaignId}/leads?${params.toString()}`
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        })
+      const url = queryString
+        ? `${API_BASE_URL}/campaigns/${campaignId}/leads?${queryString}`
+        : `${API_BASE_URL}/campaigns/${campaignId}/leads`
 
-        const responseText = await response.text()
-        if (!response.ok) {
-          let errorMessage = `Failed to fetch leads (${response.status})`
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
 
-          try {
-            const errorData =
-              JSON.parse(responseText)
+      const responseText = await response.text()
 
-            errorMessage =
-              errorData?.message ||
-              errorData?.error ||
-              errorMessage
-          } catch {
-            if (responseText) {
-              errorMessage = responseText
-            }
-          }
+      if (!response.ok) {
+        let message = `Failed to fetch leads (${response.status})`
 
-          throw new Error(errorMessage)
-        }
-
-        let data = {}
         try {
-          data = responseText
+          const errorData = responseText
             ? JSON.parse(responseText)
             : {}
-        } catch (parseError) {
-          throw new Error('Invalid response received from server.')
+
+          message =
+            errorData?.message ||
+            errorData?.error ||
+            message
+        } catch {
+          if (responseText) {
+            message = responseText
+          }
         }
 
-        let leadsData = []
-        if (Array.isArray(data)) {
-          leadsData = data
-        } else if (Array.isArray(data?.leads)) {
-          leadsData = data.leads
-        } else if (Array.isArray(data?.data)) {
-          leadsData = data.data
-        } else if (
-          Array.isArray(data?.data?.leads)
-        ) {
-          leadsData = data.data.leads
-        }
-        setLeads(leadsData)
-
-        const campaignPayload =
-          data?.campaign ||
-          data?.data?.campaign ||
-          null
-        if (
-          campaignPayload &&
-          typeof campaignPayload === 'object'
-        ) {
-          setCampaign((prev) => ({
-            ...prev,
-            ...campaignPayload,
-          }))
-        }
-
-        const pagination =
-          data?.pagination ||
-          data?.meta ||
-          data?.data?.pagination ||
-          data?.data?.meta ||
-          {}
-
-        const total =
-          data?.total ??
-          pagination?.total ??
-          data?.data?.total ??
-          leadsData.length
-
-        const limit =
-          data?.limit ??
-          pagination?.limit ??
-          data?.data?.limit ??
-          pageSize
-
-        const serverPage =
-          data?.page ??
-          pagination?.page ??
-          data?.data?.page ??
-          page
-
-        const serverTotalPages =
-          data?.totalPages ??
-          pagination?.totalPages ??
-          data?.data?.totalPages ??
-          Math.ceil(
-            Number(total) / Number(limit)
-          )
-
-        setTotalLeads(
-          Number(total) || 0
-        )
-
-        setTotalPages(
-          Math.max(
-            1,
-            Number(serverTotalPages) || 1
-          )
-        )
-
-        setCurrentPage(
-          Number(serverPage) || page
-        )
-      } catch (err) {
-        setError( err.message || 'Something went wrong')
-      } finally {
-        setLoading(false)
+        throw new Error(message)
       }
-    },
-    [
-      campaignId,
-      pageSize,
-      filterQuery,
-      fromDate,
-      toDate,
-    ]
-  )
 
-  useEffect(() => {
-    fetchLeads(1, assignedFilter)
+      let data = {}
+
+      try {
+        data = responseText
+          ? JSON.parse(responseText)
+          : {}
+      } catch {
+        throw new Error(
+          'Invalid response received from server.'
+        )
+      }
+
+      let leadsData = []
+
+      if (Array.isArray(data)) {
+        leadsData = data
+      } else if (Array.isArray(data?.leads)) {
+        leadsData = data.leads
+      } else if (Array.isArray(data?.data)) {
+        leadsData = data.data
+      } else if (
+        Array.isArray(data?.data?.leads)
+      ) {
+        leadsData = data.data.leads
+      }
+
+      setLeads(leadsData)
+
+      const campaignData =
+        data?.campaign ||
+        data?.data?.campaign
+
+      if (
+        campaignData &&
+        typeof campaignData === 'object'
+      ) {
+        setCampaign((prev) => ({
+          ...prev,
+          ...campaignData,
+        }))
+      }
+
+      const total =
+        data?.total ??
+        data?.data?.total ??
+        leadsData.length
+
+      setTotalLeads(Number(total) || leadsData.length)
+    } catch (err) {
+      setError(
+        err?.message ||
+          'Something went wrong while fetching leads.'
+      )
+    } finally {
+      setLoading(false)
+    }
   }, [
+    campaignId,
     assignedFilter,
-    pageSize,
-    fetchLeads,
+    filterQuery,
+    fromDate,
+    toDate,
   ])
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchLeads(1, assignedFilter)
-    }, 500)
+      fetchLeads()
+    }, filterQuery ? 500 : 0)
 
     return () => clearTimeout(timer)
-  }, [ filterQuery, fromDate, toDate, assignedFilter, fetchLeads,])
+  }, [
+    fetchLeads,
+    filterQuery,
+    fromDate,
+    toDate,
+    assignedFilter,
+  ])
 
   const handleImportLeads = async (file) => {
     if (!file) {
@@ -258,14 +223,17 @@ const LeadDetails = () => {
     }
 
     const token = Cookies.get('token')
-    if (!token) {
-      setError('Authorization token not found. Please log in again.')
 
-      throw new Error('Not authenticated')
+    if (!token) {
+      const message = 'Authorization token not found. Please log in again.'
+
+      setError(message)
+      throw new Error(message)
     }
 
     setIsImporting(true)
     setError(null)
+
     const formData = new FormData()
     formData.append('file', file)
 
@@ -283,30 +251,29 @@ const LeadDetails = () => {
 
       const responseText =
         await response.text()
+
       if (!response.ok) {
-        let errorMessage = `Import failed (${response.status})`
+        let message = `Import failed (${response.status})`
 
         try {
-          const errorData =
-            JSON.parse(responseText)
+          const errorData = responseText
+            ? JSON.parse(responseText)
+            : {}
 
-          errorMessage =
+          message =
             errorData?.message ||
             errorData?.error ||
-            errorMessage
+            message
         } catch {
           if (responseText) {
-            errorMessage = responseText
+            message = responseText
           }
         }
 
-        throw new Error(errorMessage)
+        throw new Error(message)
       }
 
-      await fetchLeads(
-        currentPage,
-        assignedFilter
-      )
+      await fetchLeads()
 
       setIsImportModalOpen(false)
 
@@ -316,24 +283,25 @@ const LeadDetails = () => {
 
       return true
     } catch (err) {
-      toast.error( err.message || 'Failed to import leads.')
+      toast.error(
+        err?.message ||
+          'Failed to import leads.'
+      )
+
       throw err
     } finally {
       setIsImporting(false)
     }
   }
-
-  const tcOptions = useMemo(() => {
+  const getTcOptions = () => {
     const map = new Map()
 
     leads.forEach((lead) => {
-      const assignedTo =
-        lead?.assignedTo
+      const assignedTo = lead?.assignedTo
 
       if (
         assignedTo &&
-        (assignedTo._id ||
-          assignedTo.id)
+        (assignedTo._id || assignedTo.id)
       ) {
         const id =
           assignedTo._id ||
@@ -343,8 +311,8 @@ const LeadDetails = () => {
           map.set(
             id,
             assignedTo.name ||
-            assignedTo.fullName ||
-            `TC ${id.slice(0, 6)}`
+              assignedTo.fullName ||
+              `TC ${String(id).slice(0, 6)}`
           )
         }
       }
@@ -356,7 +324,7 @@ const LeadDetails = () => {
       id,
       name,
     }))
-  }, [leads])
+  }
 
   const assignLeads = async (
     count,
@@ -378,16 +346,18 @@ const LeadDetails = () => {
     }
 
     const normalizedSelectedIds =
-      (selectedIds || [])
-        .map((id) => id)
-        .filter(Boolean)
+      selectedIds.filter(Boolean)
 
     const hasSelectedLeads =
       normalizedSelectedIds.length > 0
 
-    const c = Number(count) || 0
+    const leadCount =
+      Number(count) || 0
 
-    if (!hasSelectedLeads && c <= 0) {
+    if (
+      !hasSelectedLeads &&
+      leadCount <= 0
+    ) {
       throw new Error(
         'Please enter a valid number of leads to assign.'
       )
@@ -419,14 +389,14 @@ const LeadDetails = () => {
         response = await fetch(
           `${API_BASE_URL}/campaigns/${campaignId}/leads/assign-by-count`,
           {
-            method: 'PATCH',
+            method: 'POST',
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type':
                 'application/json',
             },
             body: JSON.stringify({
-              count: c,
+              count: leadCount,
               userId: tcId,
             }),
           }
@@ -437,26 +407,24 @@ const LeadDetails = () => {
         await response.text()
 
       if (!response.ok) {
-        let errorMessage = `Assign failed (${response.status})`
+        let message = `Assign failed (${response.status})`
 
         try {
-          const errorData =
-            JSON.parse(responseText)
+          const errorData = responseText
+            ? JSON.parse(responseText)
+            : {}
 
-          errorMessage =
+          message =
             errorData?.message ||
             errorData?.error ||
-            errorMessage
+            message
         } catch {
           if (responseText) {
-            errorMessage =
-              responseText
+            message = responseText
           }
         }
 
-        throw new Error(
-          errorMessage
-        )
+        throw new Error(message)
       }
 
       toast.success(
@@ -467,130 +435,78 @@ const LeadDetails = () => {
 
       setSelectedLeadIds([])
 
-      await fetchLeads(
-        currentPage,
-        assignedFilter
-      )
+      await fetchLeads()
 
       return true
+    } catch (err) {
+      toast.error(
+        err?.message ||
+          'Failed to assign leads.'
+      )
+
+      throw err
     } finally {
       setIsAssigning(false)
     }
   }
 
-  useEffect(() => {
-    if (
-      currentPage > totalPages
-    ) {
-      setCurrentPage(
-        totalPages
-      )
-    }
-  }, [
-    currentPage,
-    totalPages,
-  ])
-
-  const toggleLeadSelection = (
-    leadId
-  ) => {
+  const toggleLeadSelection = (leadId) => {
     if (!leadId) return
 
-    setSelectedLeadIds(
-      (prev) => {
-        if (
-          prev.includes(leadId)
-        ) {
-          return prev.filter(
-            (id) =>
-              id !== leadId
-          )
-        }
-
-        return [
-          ...prev,
-          leadId,
-        ]
+    setSelectedLeadIds((prev) => {
+      if (prev.includes(leadId)) {
+        return prev.filter(
+          (id) => id !== leadId
+        )
       }
-    )
+
+      return [...prev, leadId]
+    })
   }
-
-  const toggleSelectAllVisibleRows =
-    () => {
-      const visibleIds =
-        leads
-          .map(
-            (row) =>
-              row._id ||
-              row.id
-          )
-          .filter(Boolean)
-
-      if (
-        visibleIds.length === 0
-      ) {
-        return
-      }
-
-      const allVisibleSelected =
-        visibleIds.every(
-          (id) =>
-            selectedLeadIds.includes(
-              id
-            )
-        )
-
-      if (
-        allVisibleSelected
-      ) {
-        setSelectedLeadIds(
-          (prev) =>
-            prev.filter(
-              (id) =>
-                !visibleIds.includes(
-                  id
-                )
-            )
-        )
-
-        return
-      }
-
-      setSelectedLeadIds(
-        (prev) => [
-          ...new Set([
-            ...prev,
-            ...visibleIds,
-          ]),
-        ]
+  const toggleSelectAllRows = () => {
+    const visibleIds = leads
+      .map(
+        (lead) =>
+          lead._id || lead.id
       )
-    }
+      .filter(Boolean)
 
-  const goToPage = (page) => {
-    if (
-      page < 1 ||
-      page > totalPages ||
-      page === currentPage
-    ) {
+    if (visibleIds.length === 0) {
       return
     }
 
-    setSelectedLeadIds([])
+    const allSelected =
+      visibleIds.every((id) =>
+        selectedLeadIds.includes(id)
+      )
 
-    fetchLeads(
-      page,
-      assignedFilter
-    )
+    if (allSelected) {
+      setSelectedLeadIds((prev) =>
+        prev.filter(
+          (id) =>
+            !visibleIds.includes(id)
+        )
+      )
+
+      return
+    }
+
+    setSelectedLeadIds((prev) => [
+      ...new Set([
+        ...prev,
+        ...visibleIds,
+      ]),
+    ])
   }
 
   const selectedLeadCount =
     selectedLeadIds.length
 
-  const allVisibleSelected =
+  const allLeadsSelected =
     leads.length > 0 &&
-    leads.every((row) => {
+    leads.every((lead) => {
       const leadId =
-        row._id || row.id
+        lead._id || lead.id
 
       return (
         leadId &&
@@ -600,8 +516,11 @@ const LeadDetails = () => {
       )
     })
 
+  const tcOptions = getTcOptions()
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-[var(--primary)]">
@@ -609,9 +528,7 @@ const LeadDetails = () => {
           </p>
 
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">
-            {getCampaignTitle(
-              campaign
-            )}
+            {getCampaignTitle(campaign)}
           </h1>
 
           <p className="mt-1 text-sm text-[var(--muted)]">
@@ -624,13 +541,9 @@ const LeadDetails = () => {
           <button
             type="button"
             onClick={() =>
-              setIsImportModalOpen(
-                true
-              )
+              setIsImportModalOpen(true)
             }
-            disabled={
-              isImporting
-            }
+            disabled={isImporting}
             className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Upload size={16} />
@@ -647,7 +560,8 @@ const LeadDetails = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      {/* Filters */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="relative w-full">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
@@ -657,9 +571,7 @@ const LeadDetails = () => {
           <input
             type="text"
             placeholder="Search leads..."
-            value={
-              filterQuery
-            }
+            value={filterQuery}
             onChange={(e) =>
               setFilterQuery(
                 e.target.value
@@ -673,9 +585,7 @@ const LeadDetails = () => {
           type="date"
           value={fromDate}
           onChange={(e) =>
-            setFromDate(
-              e.target.value
-            )
+            setFromDate(e.target.value)
           }
           className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
         />
@@ -684,42 +594,13 @@ const LeadDetails = () => {
           type="date"
           value={toDate}
           onChange={(e) =>
-            setToDate(
-              e.target.value
-            )
+            setToDate(e.target.value)
           }
           className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
         />
-
-        <select
-          value={
-            assignedFilter
-          }
-          onChange={(e) => {
-            setAssignedFilter(
-              e.target.value
-            )
-            setSelectedLeadIds(
-              []
-            )
-          }}
-          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-        >
-          <option value="unassigned">
-            Unassigned
-          </option>
-
-          <option value="assigned">
-            Assigned
-          </option>
-
-          <option value="all">
-            All
-          </option>
-        </select>
       </div>
 
-      {/* Top info / actions */}
+      {/* Actions */}
       {!loading && !error && (
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="text-sm text-[var(--muted)]">
@@ -734,63 +615,47 @@ const LeadDetails = () => {
             leads
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Assignment filter */}
+            <div className="flex rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1">
+              {[
+                ['unassigned', 'Unassigned'],
+                ['assigned', 'Assigned'],
+                ['all', 'All'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setAssignedFilter(value)
+                    setSelectedLeadIds([])
+                  }}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                    assignedFilter === value
+                      ? 'bg-[var(--primary)] text-white shadow-sm'
+                      : 'text-[var(--muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <button
               type="button"
               onClick={() =>
-                setIsAssignModalOpen(
-                  true
-                )
+                setIsAssignModalOpen(true)
               }
-              disabled={
-                isAssigning
-              }
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isAssigning}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Assign
             </button>
-
-            <select
-              value={
-                pageSize
-              }
-              onChange={(e) => {
-                setPageSize(
-                  Number(
-                    e.target.value
-                  )
-                )
-
-                setCurrentPage(
-                  1
-                )
-
-                setSelectedLeadIds(
-                  []
-                )
-              }}
-              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
-            >
-              <option value={10}>
-                10 / page
-              </option>
-
-              <option value={20}>
-                20 / page
-              </option>
-
-              <option value={50}>
-                50 / page
-              </option>
-
-              <option value={100}>
-                100 / page
-              </option>
-            </select>
           </div>
         </div>
       )}
 
+      {/* Selection info */}
       {!loading &&
         !error &&
         selectedLeadCount > 0 && (
@@ -798,20 +663,16 @@ const LeadDetails = () => {
             <span>
               {selectedLeadCount}{' '}
               lead
-              {selectedLeadCount ===
-                1
+              {selectedLeadCount === 1
                 ? ''
                 : 's'}{' '}
-              selected for
-              assignment.
+              selected for assignment.
             </span>
 
             <button
               type="button"
               onClick={() =>
-                setSelectedLeadIds(
-                  []
-                )
+                setSelectedLeadIds([])
               }
               className="text-sm font-semibold text-[var(--primary)] hover:opacity-80"
             >
@@ -820,6 +681,7 @@ const LeadDetails = () => {
           </div>
         )}
 
+      {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-sm">
@@ -829,15 +691,12 @@ const LeadDetails = () => {
                   <label className="flex items-center justify-center">
                     <input
                       type="checkbox"
-                      checked={
-                        allVisibleSelected
-                      }
+                      checked={allLeadsSelected}
                       onChange={
-                        toggleSelectAllVisibleRows
+                        toggleSelectAllRows
                       }
                       disabled={
-                        leads.length ===
-                        0 ||
+                        leads.length === 0 ||
                         loading
                       }
                       className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
@@ -876,6 +735,7 @@ const LeadDetails = () => {
             </thead>
 
             <tbody className="divide-y divide-[var(--border)]">
+              {/* Loading */}
               {loading && (
                 <tr>
                   <td
@@ -896,225 +756,136 @@ const LeadDetails = () => {
                 </tr>
               )}
 
+              {/* Error */}
+              {!loading && error && (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="py-12 text-center text-red-500"
+                  >
+                    Error: {error}
+                  </td>
+                </tr>
+              )}
+
+              {/* Leads */}
               {!loading &&
-                error && (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="py-12 text-center text-red-500"
+                !error &&
+                leads.length > 0 &&
+                leads.map((row) => {
+                  const leadId =
+                    row._id || row.id
+
+                  return (
+                    <tr
+                      key={
+                        leadId ||
+                        `${row.mobile}-${row.createdAt}`
+                      }
+                      className="hover:bg-[var(--surface-alt)]"
                     >
-                      Error:{' '}
-                      {error}
-                    </td>
-                  </tr>
-                )}
-
-              {!loading &&
-                !error &&
-                leads.length >
-                0 &&
-                leads.map(
-                  (row) => {
-                    const leadId =
-                      row._id ||
-                      row.id
-
-                    return (
-                      <tr
-                        key={
-                          leadId ||
-                          `${row.mobile}-${row.createdAt}`
-                        }
-                        className="hover:bg-[var(--surface-alt)]"
-                      >
-                        <td className="px-4 py-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={
-                              !!leadId &&
-                              selectedLeadIds.includes(
-                                leadId
-                              )
-                            }
-                            onChange={() =>
-                              toggleLeadSelection(
-                                leadId
-                              )
-                            }
-                            disabled={
-                              !leadId
-                            }
-                            className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
-                          />
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-4 text-[var(--muted)]">
-                          {formatDate(
-                            row.createdAt
-                          )}
-                        </td>
-
-                        <td className="px-6 py-4 font-medium text-[var(--text)]">
-                          {row.name ||
-                            'N/A'}
-                        </td>
-
-                        <td className="px-6 py-4 text-[var(--muted)]">
-                          {row.mobile ||
-                            'N/A'}
-                        </td>
-
-                        <td className="px-6 py-4 text-[var(--muted)]">
-                          {row.pincode ||
-                            'N/A'}
-                        </td>
-
-                        <td
-                          className="max-w-xs truncate px-6 py-4 text-[var(--muted)]"
-                          title={
-                            row.address ||
-                            ''
+                      <td className="px-4 py-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            !!leadId &&
+                            selectedLeadIds.includes(
+                              leadId
+                            )
                           }
+                          onChange={() =>
+                            toggleLeadSelection(
+                              leadId
+                            )
+                          }
+                          disabled={!leadId}
+                          className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
+                        />
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-4 text-[var(--muted)]">
+                        {formatDate(
+                          row.createdAt
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4 font-medium text-[var(--text)]">
+                        {row.name || 'N/A'}
+                      </td>
+
+                      <td className="px-6 py-4 text-[var(--muted)]">
+                        {row.mobile || 'N/A'}
+                      </td>
+
+                      <td className="px-6 py-4 text-[var(--muted)]">
+                        {row.pincode || 'N/A'}
+                      </td>
+
+                      <td
+                        className="max-w-xs truncate px-6 py-4 text-[var(--muted)]"
+                        title={row.address || ''}
+                      >
+                        {row.address || 'N/A'}
+                      </td>
+
+                      <td className="px-6 py-4 text-[var(--muted)]">
+                        {row.assignedTo?.name ||
+                          'N/A'}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <button
+                          type="button"
+                          disabled
+                          className="cursor-not-allowed rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white opacity-50 shadow-sm"
                         >
-                          {row.address ||
-                            'N/A'}
-                        </td>
+                          Update
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
 
-                        <td className="px-6 py-4 text-[var(--muted)]">
-                          {row
-                            .assignedTo
-                            ?.name ||
-                            'N/A'}
-                        </td>
-
-                        <td className="px-6 py-4">
-                          <button
-                            type="button"
-                            disabled
-                            className="cursor-not-allowed rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white opacity-50 shadow-sm"
-                          >
-                            Update
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  }
-                )}
-
+              {/* Empty */}
               {!loading &&
                 !error &&
-                leads.length ===
-                0 && (
+                leads.length === 0 && (
                   <tr>
                     <td
                       colSpan={8}
                       className="py-12 text-center text-[var(--muted)]"
                     >
-                      {totalLeads ===
-                        0
-                        ? 'No leads found for this campaign.'
-                        : 'No leads found on this page.'}
+                      No leads found for this campaign.
                     </td>
                   </tr>
                 )}
             </tbody>
           </table>
         </div>
-
-        {!loading &&
-          !error &&
-          totalPages > 1 && (
-            <div className="flex flex-col gap-3 border-t border-[var(--border)] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-xs text-[var(--muted)]">
-                Showing page{' '}
-                <span className="font-semibold text-[var(--text)]">
-                  {currentPage}
-                </span>{' '}
-                of{' '}
-                <span className="font-semibold text-[var(--text)]">
-                  {totalPages}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    goToPage(
-                      currentPage -
-                      1
-                    )
-                  }
-                  disabled={
-                    currentPage <=
-                    1 ||
-                    loading
-                  }
-                  className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] shadow-sm transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Previous
-                </button>
-
-                <span className="min-w-[90px] text-center text-xs font-medium text-[var(--muted)]">
-                  Page{' '}
-                  {currentPage}{' '}
-                  of{' '}
-                  {totalPages}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    goToPage(
-                      currentPage +
-                      1
-                    )
-                  }
-                  disabled={
-                    currentPage >=
-                    totalPages ||
-                    loading
-                  }
-                  className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] shadow-sm transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
       </div>
 
+      {/* Assign modal */}
       <AssignModal
-        open={isAssignModalOpen} onClose={() =>
-          setIsAssignModalOpen(
-            false
-          )
+        open={isAssignModalOpen}
+        onClose={() =>
+          setIsAssignModalOpen(false)
         }
-        leadsCount={
-          leads.length
-        }
-        tcOptions={
-          tcOptions
-        }
-        onAssign={
-          assignLeads
-        }
-        isAssigning={
-          isAssigning
-        }
-        selectedLeadIds={
-          selectedLeadIds
-        }
+        leadsCount={leads.length}
+        tcOptions={tcOptions}
+        onAssign={assignLeads}
+        isAssigning={isAssigning}
+        selectedLeadIds={selectedLeadIds}
       />
 
+      {/* Import modal */}
       <ImportCampaignModal
-        open={isImportModalOpen} campaignId={campaignId} onClose={() => setIsImportModalOpen(false)}
-        onImport={
-          handleImportLeads
+        open={isImportModalOpen}
+        campaignId={campaignId}
+        onClose={() =>
+          setIsImportModalOpen(false)
         }
-        isLoading={
-          isImporting
-        }
+        onImport={handleImportLeads}
+        isLoading={isImporting}
       />
     </div>
   )

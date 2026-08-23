@@ -8,6 +8,7 @@ const API_URL = 'https://crm-backend-5-iocr.onrender.com/api'
 
 const Header = ({
   sidebarOpen,
+  sidebarCollapsed,
   toggleSidebar,
 }) => {
   const navigate = useNavigate()
@@ -60,13 +61,6 @@ const Header = ({
     fetchUser()
   }, [navigate])
 
-  // const handleLogout = () => {
-  //   Cookies.remove('token')
-  //   setUser(null)
-  //   setShowUserMenu(false)
-  //   navigate('/login')
-  // }
-
   const userName =
     user?.name ||
     user?.email?.split('@')[0] ||
@@ -79,7 +73,13 @@ const Header = ({
     .toUpperCase()
 
   return (
-    <header className="sticky top-0 z-20 w-full shrink-0 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur-xl sm:px-6 md:px-8">
+    <header
+      className={`fixed inset-x-0 top-0 z-20 shrink-0 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur-xl transition-[left,width] duration-300 sm:px-6 md:px-8 ${
+        sidebarCollapsed
+          ? 'md:left-[82px] md:w-[calc(100%-82px)]'
+          : 'md:left-[280px] md:w-[calc(100%-280px)]'
+      }`}
+    >
       <div className="flex min-h-[56px] w-full items-center justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           {/* Mobile menu */}
