@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-alt: #f8fafc;
+  --primary: #0b38ff;
+  --primary-hover: #0a34d8;
+  --primary-700: #065fcf;
+  --text: #0f1724;
+  --muted: #6b7280;
+  --accent: #06b6d4;
+  --border: rgba(15, 23, 36, 0.12);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+[data-theme='dark'] {
+  --bg: #0f1724;
+  --surface: #111827;
+  --surface-alt: #1f2937;
+  --primary: #60a5fa;
+  --primary-700: #3b82f6;
+  --text: #f8fafc;
+  --muted: #9ca3af;
+  --accent: #38bdf8;
+  --border: rgba(148, 163, 184, 0.24);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, var(--bg), var(--surface-alt));
+  color: var(--text);
+    font-family: 'Poppins', sans-serif !important;
+}
+
+.input-field {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: var(--surface-alt);
+  padding: 0.9rem 1rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(11, 116, 255, 0.14);
+  background: var(--surface);
+}
+
+.form-card {
+  border: 1px solid var(--border);
+  border-radius: 1.75rem;
+  background: var(--surface);
+}
+
+.permission-dropdown {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+
+.permission-dropdown.open {
+  max-height: 22rem;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.permission-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Report helpers */
+.report-collapse {
+  transition: max-height 0.28s ease, opacity 0.28s ease;
+  overflow: hidden;
+}
+
+.report-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.18);
+}
+
+.report-gradient {
+  background: linear-gradient(90deg, #0f766e, #10b981);
+}
+
