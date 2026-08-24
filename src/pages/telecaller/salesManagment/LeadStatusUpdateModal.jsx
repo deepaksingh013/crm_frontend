@@ -1,38 +1,41 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import Modal from '../../../components/modal/Modal';
 import { toast } from 'react-hot-toast';
-
+import { CheckCircle2, Loader2, X, Pencil, Ban, Clock3, PhoneOff,} from 'lucide-react';
 
 const STATUS_OPTIONS = [
   {
     value: 'success',
     label: 'Complete',
     description: 'Customer is successfully converted',
-    icon: '✓',
-    iconClass: 'bg-emerald-500 text-white',
+    icon: CheckCircle2,
+    iconClass: 'text-emerald-600',
+    activeClass: 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100',
   },
   {
     value: 'rejected',
     label: 'Reject',
     description: 'Lead has been rejected',
-    icon: '×',
+    icon: Ban,
     iconClass: 'text-rose-600',
+    activeClass: 'border-rose-500 bg-rose-50 ring-2 ring-rose-100',
   },
   {
     value: 'hold',
     label: 'Holding',
     description: 'Follow up with customer later',
-    icon: 'Ⅱ',
+    icon: Clock3,
     iconClass: 'text-amber-600',
+    activeClass: 'border-amber-500 bg-amber-50 ring-2 ring-amber-100',
   },
   {
     value: 'notConnected',
     label: 'Not Connected',
     description: 'Customer could not be contacted',
-    icon: '⊘',
+    icon: PhoneOff,
     iconClass: 'text-slate-600',
+    activeClass: 'border-slate-500 bg-slate-50 ring-2 ring-slate-100',
   },
 ];
 
@@ -74,7 +77,6 @@ const API_STATUS_BY_VALUE = {
   hold: 'Holding',
   notConnected: 'Not Connected',
 };
-
 
 const NOT_CONNECTED_REASONS = [
   {
@@ -197,7 +199,6 @@ const STATUS_FIELDS = {
     },
   ],
 };
-
 const LEAD_FIELD_MAP = {
   customerName: [
     'name',
@@ -302,7 +303,12 @@ const getLeadId = (lead) => {
 
   const id = getLeadValue(
     lead,
-    ['_id', 'id', 'leadId', 'lead_id']
+    [
+      '_id',
+      'id',
+      'leadId',
+      'lead_id',
+    ]
   );
 
   if (id) return id;
@@ -311,7 +317,10 @@ const getLeadId = (lead) => {
     lead.lead &&
     (lead.lead._id || lead.lead.id)
   ) {
-    return lead.lead._id || lead.lead.id;
+    return (
+      lead.lead._id ||
+      lead.lead.id
+    );
   }
 
   return null;
@@ -330,8 +339,14 @@ const getCampaignId = (lead) => {
   );
 
   if (direct) {
-    if (typeof direct === 'object') {
-      return direct._id || direct.id || null;
+    if (
+      typeof direct === 'object'
+    ) {
+      return (
+        direct._id ||
+        direct.id ||
+        null
+      );
     }
 
     return direct;
@@ -339,9 +354,15 @@ const getCampaignId = (lead) => {
 
   if (
     lead.campaign &&
-    (lead.campaign._id || lead.campaign.id)
+    (
+      lead.campaign._id ||
+      lead.campaign.id
+    )
   ) {
-    return lead.campaign._id || lead.campaign.id;
+    return (
+      lead.campaign._id ||
+      lead.campaign.id
+    );
   }
 
   return null;
@@ -350,8 +371,15 @@ const getCampaignId = (lead) => {
 const getCampaignName = (lead) => {
   const campaign = lead?.campaign;
 
-  if (campaign && typeof campaign === 'object') {
-    return campaign.name || campaign.title || '';
+  if (
+    campaign &&
+    typeof campaign === 'object'
+  ) {
+    return (
+      campaign.name ||
+      campaign.title ||
+      ''
+    );
   }
 
   return lead?.campaignName || '';
@@ -362,14 +390,17 @@ const getToday = () => {
   const offset = date.getTimezoneOffset();
 
   return new Date(
-    date.getTime() - offset * 60 * 1000
+    date.getTime() -
+      offset * 60 * 1000
   )
     .toISOString()
     .split('T')[0];
 };
 
 const normalizeStatus = (value) => {
-  const normalized = String(value ?? '')
+  const normalized = String(
+    value ?? ''
+  )
     .toLowerCase()
     .trim();
 
@@ -379,18 +410,26 @@ const normalizeStatus = (value) => {
 
   const found = Object.entries(
     STATUS_ALIASES
-  ).find(([, aliases]) =>
-    aliases.includes(normalized)
+  ).find(
+    ([, aliases]) =>
+      aliases.includes(normalized)
   );
 
-  return found?.[0] || normalized;
+  return (
+    found?.[0] ||
+    normalized
+  );
 };
 
 const formatLeadId = (lead) =>
   String(
     getLeadValue(
       lead,
-      ['leadId', 'id', '_id'],
+      [
+        'leadId',
+        'id',
+        '_id',
+      ],
       'N/A'
     )
   );
@@ -401,7 +440,9 @@ const getInitials = (name) => {
   const initials = String(name)
     .split(/\s+/)
     .filter(Boolean)
-    .map((word) => word[0])
+    .map(
+      (word) => word[0]
+    )
     .join('')
     .slice(0, 2)
     .toUpperCase();
@@ -415,29 +456,40 @@ const getToken = (authToken) => {
   }
 
   try {
-    return Cookies.get('token') || null;
+    return (
+      Cookies.get('token') ||
+      null
+    );
   } catch {
     return null;
   }
 };
 
 const getInitialForm = (lead) => {
-  return Object.keys(INITIAL_FORM).reduce(
+  return Object.keys(
+    INITIAL_FORM
+  ).reduce(
     (form, field) => {
-      form[field] = getLeadValue(
-        lead,
-        LEAD_FIELD_MAP[field] || [],
-        ''
-      );
+      form[field] =
+        getLeadValue(
+          lead,
+          LEAD_FIELD_MAP[field] ||
+            [],
+          ''
+        );
 
       return form;
     },
-    { ...INITIAL_FORM }
+    {
+      ...INITIAL_FORM,
+    }
   );
 };
 
-
-const validateForm = (status, form) => {
+const validateForm = (
+  status,
+  form
+) => {
   if (!status) {
     return 'Please select a status.';
   }
@@ -446,7 +498,9 @@ const validateForm = (status, form) => {
     STATUS_FIELDS[status] || [];
 
   for (const field of fields) {
-    if (!field.required) continue;
+    if (!field.required) {
+      continue;
+    }
 
     const value = String(
       form[field.name] ?? ''
@@ -473,7 +527,6 @@ const buildPayload = (
   form,
   statusOption
 ) => {
-
   const payload = {
     ...lead,
 
@@ -501,16 +554,19 @@ const buildPayload = (
       ).trim() || null,
 
     status:
-      API_STATUS_BY_VALUE[statusOption.value] ||
-      statusOption.label,
+      API_STATUS_BY_VALUE[
+        statusOption.value
+      ] || statusOption.label,
 
     reason: String(
       form.reason ?? ''
     ).trim(),
   };
 
-  
-  if (statusOption.value === 'hold') {
+  if (
+    statusOption.value ===
+    'hold'
+  ) {
     payload.holdDate =
       form.holdDate || null;
   } else {
@@ -543,7 +599,6 @@ const LeadStatusUpdateModal = ({
   isUpdating: externalUpdating = false,
   campaignId,
   authToken,
-
   apiUrl = 'https://crm-backend-5-iocr.onrender.com/api',
 }) => {
   const [
@@ -551,8 +606,10 @@ const LeadStatusUpdateModal = ({
     setSelectedStatus,
   ] = useState('success');
 
-  const [form, setForm] =
-    useState(INITIAL_FORM);
+  const [
+    form,
+    setForm,
+  ] = useState(INITIAL_FORM);
 
   const [
     internalUpdating,
@@ -563,14 +620,17 @@ const LeadStatusUpdateModal = ({
     externalUpdating ||
     internalUpdating;
 
-  const selectedOption = useMemo(
-    () =>
-      STATUS_OPTIONS.find(
-        (option) =>
-          option.value === selectedStatus
-      ) || STATUS_OPTIONS[0],
-    [selectedStatus]
-  );
+  const selectedOption =
+    useMemo(
+      () =>
+        STATUS_OPTIONS.find(
+          (option) =>
+            option.value ===
+            selectedStatus
+        ) ||
+        STATUS_OPTIONS[0],
+      [selectedStatus]
+    );
 
   const name = useMemo(
     () =>
@@ -582,27 +642,36 @@ const LeadStatusUpdateModal = ({
   );
 
   const dynamicFields =
-    STATUS_FIELDS[selectedStatus] || [];
+    STATUS_FIELDS[
+      selectedStatus
+    ] || [];
 
   useEffect(() => {
-    if (!isOpen || !lead) {
+    if (
+      !isOpen ||
+      !lead
+    ) {
       return;
     }
 
     const currentStatus =
       normalizeStatus(
-        getLeadValue(lead, [
-          'status',
-          'leadStatus',
-          'state',
-          'lead_state',
-        ])
+        getLeadValue(
+          lead,
+          [
+            'status',
+            'leadStatus',
+            'state',
+            'lead_state',
+          ]
+        )
       );
 
     setSelectedStatus(
       STATUS_OPTIONS.some(
         (option) =>
-          option.value === currentStatus
+          option.value ===
+          currentStatus
       )
         ? currentStatus
         : 'success'
@@ -610,45 +679,101 @@ const LeadStatusUpdateModal = ({
 
     setForm({
       ...getInitialForm(lead),
-      product: getCampaignName(lead),
+      product:
+        getCampaignName(lead),
     });
-  }, [lead, isOpen]);
+  }, [
+    lead,
+    isOpen,
+  ]);
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (
+      event
+    ) => {
+      if (
+        event.key === 'Escape' &&
+        !isUpdating
+      ) {
+        onClose?.();
+      }
+    };
+
+    window.addEventListener(
+      'keydown',
+      handleKeyDown
+    );
+
+    return () => {
+      window.removeEventListener(
+        'keydown',
+        handleKeyDown
+      );
+    };
+  }, [
+    isOpen,
+    isUpdating,
+    onClose,
+  ]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow =
+      document.body.style
+        .overflow;
+
+    document.body.style.overflow =
+      'hidden';
+
+    return () => {
+      document.body.style.overflow =
+        originalOverflow;
+    };
+  }, [isOpen]);
 
   const updateField = (
     field,
     value
   ) => {
-    setForm((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    setForm(
+      (previous) => ({
+        ...previous,
+        [field]: value,
+      })
+    );
   };
 
   const handleStatusChange = (
     status
   ) => {
-    setSelectedStatus(status);
+    setSelectedStatus(
+      status
+    );
 
-    setForm((previous) => ({
-      ...previous,
-      reason:
-        status === 'rejected' ||
-        status === 'notConnected'
-          ? previous.reason
-          : '',
+    setForm(
+      (previous) => ({
+        ...previous,
 
-      holdDate:
-        status === 'hold'
-          ? previous.holdDate
-          : '',
-    }));
+        reason:
+          status ===
+            'rejected' ||
+          status ===
+            'notConnected'
+            ? previous.reason
+            : '',
+
+        holdDate:
+          status === 'hold'
+            ? previous.holdDate
+            : '',
+      })
+    );
   };
 
-
   const handleClose = () => {
-    if (isUpdating) {
-      return;
-    }
+    if (isUpdating) return;
 
     onClose?.();
   };
@@ -661,12 +786,16 @@ const LeadStatusUpdateModal = ({
         );
 
       if (validationError) {
-        toast.error(validationError);
+        toast.error(
+          validationError
+        );
         return;
       }
 
       if (!lead) {
-        toast.error('Lead information is missing.');
+        toast.error(
+          'Lead information is missing.'
+        );
         return;
       }
 
@@ -674,7 +803,9 @@ const LeadStatusUpdateModal = ({
         getLeadId(lead);
 
       if (!leadId) {
-        toast.error('Unable to determine lead id.');
+        toast.error(
+          'Unable to determine lead id.'
+        );
         return;
       }
 
@@ -683,7 +814,9 @@ const LeadStatusUpdateModal = ({
         getCampaignId(lead);
 
       if (!finalCampaignId) {
-        toast.error('Unable to determine campaign id.');
+        toast.error(
+          'Unable to determine campaign id.'
+        );
         return;
       }
 
@@ -698,7 +831,12 @@ const LeadStatusUpdateModal = ({
       }
 
       const baseUrl =
-        String(apiUrl || '').replace(/\/$/,'');
+        String(
+          apiUrl || ''
+        ).replace(
+          /\/$/,
+          ''
+        );
 
       const payload =
         buildPayload(
@@ -707,7 +845,7 @@ const LeadStatusUpdateModal = ({
           selectedOption
         );
 
-      const url =`${baseUrl}/campaigns/${finalCampaignId}/leads/${leadId}`;
+      const url = `${baseUrl}/campaigns/${finalCampaignId}/leads/${leadId}`;
 
       try {
         setInternalUpdating(
@@ -730,12 +868,17 @@ const LeadStatusUpdateModal = ({
           );
 
         const data = response?.data || {};
-        onUpdateSuccess?.(data);
-        toast.success('Lead updated successfully');
+        onUpdateSuccess?.( data );
+        toast.success( 'Lead updated successfully');
         onClose?.();
       } catch (error) {
-        const message = error?.response?.data?.message || error?.response?.data?.error || 'Unable to update lead.';
-        toast.error(message);
+        const message =
+          error?.response
+            ?.data?.message ||
+          error?.response
+            ?.data?.error ||
+          'Unable to update lead.';
+        toast.error( message );
       } finally {
         setInternalUpdating(
           false
@@ -743,233 +886,277 @@ const LeadStatusUpdateModal = ({
       }
     };
 
-  if (!lead) {
+  if (
+    !isOpen ||
+    !lead
+  ) {
     return null;
   }
 
+  const SelectedIcon = selectedOption.icon;
+
   return (
-    <Modal
-      open={isOpen}
-      onClose={handleClose}
-      size="xl"
-      isLoading={isUpdating}
+    <div
+      className="
+        fixed inset-0 z-[9999]
+        flex items-center justify-center
+        bg-slate-950/55
+        p-3
+        backdrop-blur-[3px]
+        sm:p-5
+      "
+      onMouseDown={(event) => {
+        if (
+          event.target ===
+            event.currentTarget &&
+          !isUpdating
+        ) {
+          handleClose();
+        }
+      }}
     >
-      <div className="flex max-h-[88vh] flex-col overflow-hidden bg-white">
-        <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
+    
+      <div className=" relative flex h-[calc(100vh-24px)] max-h-[900px] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 sm:h-[calc(100vh-40px)] sm:rounded-3xl"
+        onMouseDown={(event) =>
+          event.stopPropagation()
+        }
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-white px-5 py-4 sm:px-7">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-sm font-bold text-white shadow-sm">
               {getInitials(name)}
             </div>
 
-            <div>
-              <h2 className="text-lg font-bold text-gray-800">
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-bold text-gray-800 sm:text-lg">
                 {name || 'Lead'}
               </h2>
 
-              <p className="mt-0.5 text-xs text-gray-400">
-                Lead ID: #
-                {formatLeadId(lead)}
+              <p className="mt-0.5 truncate text-xs text-gray-400">
+                Lead ID:{' '}
+                <span className="font-medium text-gray-500">
+                  #{formatLeadId(lead)}
+                </span>
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isUpdating}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-xl leading-none text-gray-400 transition hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50"
-          >
-            ×
+          <button type="button" onClick={handleClose} disabled={isUpdating} aria-label="Close modal" className=" ml-4 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="border-b border-gray-100 px-5 pt-3 sm:px-6">
-          <div className="inline-flex border-b-2 border-indigo-500 pb-3">
+        <div className="shrink-0 border-b border-gray-100 bg-white px-5 pt-3 sm:px-7">
+          <div className="inline-flex items-center gap-2 border-b-2 border-indigo-500 pb-3">
+            <Pencil className="h-3.5 w-3.5 text-indigo-600" />
             <span className="text-sm font-semibold text-indigo-600">
-              ✎&nbsp; Update Lead
+              Update Lead
             </span>
           </div>
         </div>
+        <div className=" min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white">
+          <div className="px-5 py-5 sm:px-7 sm:py-6">
+            <div>
+              <p className="mb-3 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                Select Status
+              </p>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {STATUS_OPTIONS.map(
+                  (option) => {
+                    const selected =
+                      selectedStatus ===
+                      option.value;
 
-        <div className="overflow-y-auto px-5 py-5 sm:px-6">
-          <div>
-            <p className="mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-              Select Status
-            </p>
+                    const Icon =
+                      option.icon;
 
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {STATUS_OPTIONS.map(
-                (option) => {
-                  const selected =
-                    selectedStatus ===
-                    option.value;
-
-                  return (
-                    <button
-                      key={
-                        option.value
-                      }
-                      type="button"
-                      disabled={
-                        isUpdating
-                      }
-                      onClick={() =>
-                        handleStatusChange(
+                    return (
+                      <button
+                        key={
                           option.value
-                        )
-                      }
-                      className={`
-                        group rounded-xl border p-3 text-center
-                        transition-all duration-200
-                        ${
-                          selected
-                            ? 'border-indigo-500 bg-indigo-50 shadow-sm ring-2 ring-indigo-100'
-                            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                         }
-                        disabled:cursor-not-allowed disabled:opacity-60
-                      `}
-                    >
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={`
-                            mb-1 flex h-7 w-7 items-center justify-center
-                            text-xl font-bold
-                            ${option.iconClass}
-                          `}
-                        >
-                          {option.icon}
-                        </span>
-
-                        <span className="text-xs font-semibold text-gray-700">
-                          {option.label}
-                        </span>
-
-                        <span className="mt-1 hidden text-[10px] leading-4 text-gray-400 sm:block">
-                          {
-                            option.description
+                        type="button"
+                        disabled={
+                          isUpdating
+                        }
+                        onClick={() =>
+                          handleStatusChange(
+                            option.value
+                          )
+                        }
+                        className={` group rounded-2xl border p-3.5 text-center transition-all duration-200
+                          ${
+                            selected
+                              ? option.activeClass
+                              : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                           }
-                        </span>
-                      </div>
-                    </button>
-                  );
-                }
-              )}
-            </div>
-          </div>
 
-          <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:p-5">
-            <div className="mb-5 flex items-center gap-3">
-              <div
-                className={`
-                  flex h-9 w-9 items-center justify-center rounded-lg
-                  ${
-                    selectedStatus ===
-                    'success'
-                      ? 'bg-emerald-100 text-emerald-600'
-                      : selectedStatus ===
-                          'rejected'
-                        ? 'bg-rose-100 text-rose-600'
+                          disabled:cursor-not-allowed
+                          disabled:opacity-60
+                        `}
+                      >
+                        <div className="flex flex-col items-center">
+                          <div
+                            className={` mb-2 flex h-8 w-8 items-center justify-center rounded-lg
+                              ${
+                                selected
+                                  ? 'bg-white shadow-sm'
+                                  : 'bg-gray-50'
+                              }
+                            `}
+                          >
+                            <Icon
+                              className={`
+                                h-4.5 w-4.5
+                                ${option.iconClass}
+                              `}
+                              strokeWidth={
+                                2.4
+                              }
+                            />
+                          </div>
+                          <span className="text-xs font-bold text-gray-700">
+                            {
+                              option.label
+                            }
+                          </span>
+                          <span className="mt-1 hidden text-[10px] leading-4 text-gray-400 sm:block">
+                            {
+                              option.description
+                            }
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:p-5">
+              <div className="mb-5 flex items-center gap-3">
+                <div
+                  className={` flex h-10 w-10 shrink-0 items-center justify-center rounded-xl
+                    ${
+                      selectedStatus ===
+                      'success'
+                        ? 'bg-emerald-100 text-emerald-600'
                         : selectedStatus ===
-                            'hold'
-                          ? 'bg-amber-100 text-amber-600'
-                          : 'bg-slate-200 text-slate-600'
-                  }
-                `}
-              >
-                {selectedOption.icon}
-              </div>
-
-              <div>
-                <h3 className="text-sm font-bold text-gray-800">
-                  {
-                    selectedOption.label
-                  }
-                </h3>
-
-                <p className="text-xs text-gray-400">
-                  {
-                    selectedOption.description
-                  }
-                </p>
-              </div>
-            </div>
-
-            {dynamicFields.length >
-              0 && (
-              <div>
-                <div className="mb-4">
-                  <h4 className="text-sm font-semibold text-gray-700">
-                    {getStatusSectionTitle(
-                      selectedStatus
-                    )}
-                  </h4>
-
-                  <p className="mt-1 text-xs text-gray-400">
-                    {getStatusSectionDescription(
-                      selectedStatus
-                    )}
+                            'rejected'
+                          ? 'bg-rose-100 text-rose-600'
+                          : selectedStatus ===
+                              'hold'
+                            ? 'bg-amber-100 text-amber-600'
+                            : 'bg-slate-200 text-slate-600'
+                    }
+                  `}
+                >
+                  <SelectedIcon className="h-5 w-5" strokeWidth={2.4}/>
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-gray-800">
+                    {
+                      selectedOption.label
+                    }
+                  </h3>
+                  <p className="text-xs text-gray-400">
+                    {
+                      selectedOption.description
+                    }
                   </p>
                 </div>
+              </div>
 
-                <DynamicFields
-                  fields={
-                    dynamicFields
+              {dynamicFields.length >
+                0 && (
+                <div>
+                  <div className="mb-4">
+                    <h4 className="text-sm font-bold text-gray-700">
+                      {getStatusSectionTitle(
+                        selectedStatus
+                      )}
+                    </h4>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {getStatusSectionDescription(
+                        selectedStatus
+                      )}
+                    </p>
+                  </div>
+                  <DynamicFields
+                    fields={
+                      dynamicFields
+                    }
+                    form={form}
+                    onChange={
+                      updateField
+                    }
+                    disabled={
+                      isUpdating
+                    }
+                  />
+                </div>
+              )}
+
+              {selectedStatus ===
+                'hold' && (
+                <div className="mt-4">
+
+                  <ReadOnlyField
+                    label="Customer"
+                    value={name}
+                  />
+
+                </div>
+              )}
+
+              <div className="mt-5 border-t border-gray-200 pt-5">
+                <FormTextarea
+                  label="Remark"
+                  value={
+                    form.remark
                   }
-                  form={form}
-                  onChange={
-                    updateField
+                  onChange={(
+                    value
+                  ) =>
+                    updateField(
+                      'remark',
+                      value
+                    )
                   }
+                  required
+                  placeholder="Enter remark..."
                   disabled={
                     isUpdating
                   }
+                  rows={3}
                 />
               </div>
-            )}
-
-            {selectedStatus ===
-              'hold' && (
-              <div className="mt-4">
-                <ReadOnlyField
-                  label="Customer"
-                  value={name}
-                />
-              </div>
-            )}
-
-            <div className="mt-5 border-t border-gray-200 pt-5">
-              <FormTextarea
-                label="Remark"
-                value={form.remark}
-                onChange={(value) =>
-                  updateField(
-                    'remark',
-                    value
-                  )
-                }
-                required
-                placeholder="Enter remark..."
-                disabled={
-                  isUpdating
-                }
-                rows={3}
-              />
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-gray-100 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex shrink-0 flex-col gap-3 border-t border-gray-100 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
           <div className="text-xs text-gray-400">
             <span className="font-medium text-gray-500">
               Selected:
             </span>{' '}
-            {
-              selectedOption.label
-            }
+            <span className="font-semibold text-gray-600">
+              {
+                selectedOption.label
+              }
+            </span>
           </div>
 
           <div className="flex gap-3">
-            <button type="button" onClick={handleClose} disabled={isUpdating}
-              className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            <button
+              type="button"
+              onClick={
+                handleClose
+              }
+              disabled={
+                isUpdating
+              }
+              className=" inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
@@ -982,21 +1169,26 @@ const LeadStatusUpdateModal = ({
               disabled={
                 isUpdating
               }
-              className="rounded-xl bg-[#83b9bd] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#6fa9ae] disabled:cursor-not-allowed disabled:opacity-60"
-            >
+              className=" inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60">
               {isUpdating ? (
-                <span className="flex items-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Updating...
-                </span>
+                </>
               ) : (
-                '✓ Update Lead'
+                <>
+                  <CheckCircle2
+                    className="h-4 w-4"
+                    strokeWidth={2.5}
+                  />
+                  Update Lead
+                </>
               )}
             </button>
           </div>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 };
 
@@ -1008,87 +1200,109 @@ const DynamicFields = ({
 }) => {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      {fields.map((field) => {
-        const commonProps = {
-          key: field.name,
-          label: field.label,
-          value: form[field.name],
-          onChange: (value) =>
-            onChange(
-              field.name,
-              value
-            ),
-          required:
-            field.required,
-          placeholder:
-            field.placeholder,
-          readOnly: field.readOnly,
-          disabled,
-        };
-        if (
-          field.type === 'select'
-        ) {
-          return (
-            <FormSelect
-              {...commonProps}
-              options={field.options || []}
-          />
-        );
-        }
 
-        if (
-          field.type ===
-          'textarea'
-        ) {
-          return (
-            <div
-              key={field.name}
-              className={
-                field.fullWidth
-                  ? 'md:col-span-2'
-                  : ''
-              }
-            >
-              <FormTextarea
+      {fields.map(
+        (field) => {
+          const commonProps = {
+            key: field.name,
+            label:
+              field.label,
+            value:
+              form[
+                field.name
+              ],
+            onChange: (
+              value
+            ) =>
+              onChange(
+                field.name,
+                value
+              ),
+            required:
+              field.required,
+            placeholder:
+              field.placeholder,
+            readOnly:
+              field.readOnly,
+            disabled,
+          };
+
+          if (
+            field.type ===
+            'select'
+          ) {
+            return (
+              <FormSelect
                 {...commonProps}
-                rows={
-                  field.rows ||
-                  3
+                options={
+                  field.options ||
+                  []
                 }
               />
-            </div>
+            );
+          }
+
+          if (
+            field.type ===
+            'textarea'
+          ) {
+            return (
+              <div
+                key={
+                  field.name
+                }
+                className={
+                  field.fullWidth
+                    ? 'md:col-span-2'
+                    : ''
+                }
+              >
+                <FormTextarea
+                  {...commonProps}
+                  rows={
+                    field.rows ||
+                    3
+                  }
+                />
+              </div>
+            );
+          }
+
+          return (
+            <FormField
+              {...commonProps}
+              type={
+                field.type ||
+                'text'
+              }
+              min={
+                field.minToday
+                  ? getToday()
+                  : undefined
+              }
+            />
           );
         }
-        return (
-          <FormField
-            {...commonProps}
-            type={
-              field.type ||
-              'text'
-            }
-            min={
-              field.minToday
-                ? getToday()
-                : undefined
-            }
-          />
-        );
-      })}
+      )}
+
     </div>
   );
 };
+
 const FormSelect = ({
   label,
   value,
   onChange,
   required = false,
-  placeholder = 'Select an option',
+  placeholder =
+    'Select an option',
   disabled = false,
   options = [],
 }) => {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-semibold text-gray-600">
+
+      <label className="mb-1.5 block text-xs font-bold text-gray-600">
         {label}
 
         {required && (
@@ -1099,21 +1313,31 @@ const FormSelect = ({
       </label>
 
       <select
-        value={value ?? ''}
-        onChange={(event) =>
+        value={
+          value ?? ''
+        }
+        onChange={(
+          event
+        ) =>
           onChange(
-            event.target.value
+            event.target
+              .value
           )
         }
-        disabled={disabled}
-        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
-      >
+        disabled={
+          disabled
+        }
+        className=" h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400">
         <option value="">
-          {placeholder}
+          {
+            placeholder
+          }
         </option>
 
         {options.map(
-          (option) => (
+          (
+            option
+          ) => (
             <option
               key={
                 option.value
@@ -1122,11 +1346,15 @@ const FormSelect = ({
                 option.value
               }
             >
-              {option.label}
+              {
+                option.label
+              }
             </option>
           )
         )}
+
       </select>
+
     </div>
   );
 };
@@ -1137,7 +1365,8 @@ const getStatusSectionTitle = (
   const titles = {
     success:
       'Customer Information',
-    hold: 'Follow-up Details',
+    hold:
+      'Follow-up Details',
     rejected:
       'Rejection Details',
     notConnected:
@@ -1185,7 +1414,8 @@ const FormField = ({
 }) => {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-semibold text-gray-600">
+
+      <label className="mb-1.5 block text-xs font-bold text-gray-600">
         {label}
 
         {required && (
@@ -1197,20 +1427,30 @@ const FormField = ({
 
       <input
         type={type}
-        value={value ?? ''}
-        onChange={(event) =>
+        value={
+          value ?? ''
+        }
+        onChange={(
+          event
+        ) =>
           onChange(
-            event.target.value
+            event.target
+              .value
           )
         }
         placeholder={
           placeholder
         }
         min={min}
-        disabled={disabled}
-        readOnly={readOnly}
-        className="input-field h-10 !rounded-xl !bg-white !px-3 !py-2 text-sm !text-gray-700 placeholder:!text-gray-300 read-only:!cursor-default read-only:!bg-gray-100 focus:!border-indigo-400 focus:!ring-2 focus:!ring-indigo-100 disabled:!cursor-not-allowed disabled:!bg-gray-100 disabled:!text-gray-400"
+        disabled={
+          disabled
+        }
+        readOnly={
+          readOnly
+        }
+        className=" input-field h-10 w-full !rounded-xl !bg-white !px-3 !py-2 text-sm !text-gray-700 placeholder:!text-gray-300 read-only:!cursor-default read-only:!bg-gray-100 focus:!border-indigo-400 focus:!ring-2 focus:!ring-indigo-100 disabled:!cursor-not-allowed disabled:!bg-gray-100 disabled:!text-gray-400"
       />
+
     </div>
   );
 };
@@ -1227,7 +1467,8 @@ const FormTextarea = ({
 }) => {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-semibold text-gray-600">
+
+      <label className="mb-1.5 block text-xs font-bold text-gray-600">
         {label}
 
         {required && (
@@ -1238,38 +1479,67 @@ const FormTextarea = ({
       </label>
 
       <textarea
-        value={value ?? ''}
-        onChange={(event) =>
+        value={
+          value ?? ''
+        }
+        onChange={(
+          event
+        ) =>
           onChange(
-            event.target.value
+            event.target
+              .value
           )
         }
         placeholder={
           placeholder
         }
         rows={rows}
-        disabled={disabled}
-        readOnly={readOnly}
-        className="input-field resize-none !rounded-xl !bg-white !px-3 !py-2.5 text-sm !text-gray-700 placeholder:!text-gray-300 read-only:!cursor-default read-only:!bg-gray-100 focus:!border-indigo-400 focus:!ring-2 focus:!ring-indigo-100 disabled:!cursor-not-allowed disabled:!bg-gray-100 disabled:!text-gray-400"
+        disabled={
+          disabled
+        }
+        readOnly={
+          readOnly
+        }
+        className="
+          input-field
+          w-full
+          resize-none
+          !rounded-xl
+          !bg-white
+          !px-3
+          !py-2.5
+          text-sm
+          !text-gray-700
+          placeholder:!text-gray-300
+          read-only:!cursor-default
+          read-only:!bg-gray-100
+          focus:!border-indigo-400
+          focus:!ring-2
+          focus:!ring-indigo-100
+          disabled:!cursor-not-allowed
+          disabled:!bg-gray-100
+          disabled:!text-gray-400
+        "
       />
+
     </div>
   );
 };
-
 const ReadOnlyField = ({
   label,
   value,
 }) => {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-semibold text-gray-500">
+
+      <label className="mb-1.5 block text-xs font-bold text-gray-500">
         {label}
       </label>
 
       <div className="flex h-10 items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-100 px-3 text-sm text-gray-500">
-        {value ||
-          'Not provided'}
+        {value || 'Not provided'}
       </div>
+
     </div>
   );
 };
