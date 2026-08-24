@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { Search, ArrowLeft, Upload, Loader2 } from 'lucide-react'
+import { Search, ArrowLeft, ChevronLeft, ChevronRight, Upload, Loader2 } from 'lucide-react'
 import ImportCampaignModal from './ImportCampaignModal'
 import AssignModal from './AssignModal'
 import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
 
 const API_BASE_URL ='https://crm-backend-5-iocr.onrender.com/api'
+const PAGE_SIZE = 10
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
@@ -58,6 +59,8 @@ const LeadDetails = () => {
   const [toDate, setToDate] = useState('')
   const [assignedFilter, setAssignedFilter] = useState('unassigned')
   const [totalLeads, setTotalLeads] = useState(0)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
@@ -82,6 +85,9 @@ const LeadDetails = () => {
 
     try {
       const params = new URLSearchParams()
+
+      params.append('page', String(page))
+      params.append('limit', String(PAGE_SIZE))
 
       if (assignedFilter !== 'all') {
         params.append('assigned', assignedFilter)
@@ -181,12 +187,31 @@ const LeadDetails = () => {
         }))
       }
 
+      const pagination =
+        data?.pagination ||
+        data?.meta ||
+        data?.data?.pagination ||
+        data?.data?.meta ||
+        {}
+
       const total =
         data?.total ??
         data?.data?.total ??
+        data?.totalCount ??
+        data?.data?.totalCount ??
+        pagination.total ??
+        pagination.totalItems ??
         leadsData.length
 
+      const pages =
+        data?.totalPages ??
+        data?.data?.totalPages ??
+        pagination.totalPages ??
+        pagination.pages ??
+        Math.max(Math.ceil(Number(total) / PAGE_SIZE), 1)
+
       setTotalLeads(Number(total) || leadsData.length)
+      setTotalPages(Math.max(Number(pages) || 1, 1))
     } catch (err) {
       setError(
         err?.message ||
@@ -201,6 +226,7 @@ const LeadDetails = () => {
     filterQuery,
     fromDate,
     toDate,
+    page,
   ])
 
   useEffect(() => {
@@ -215,7 +241,23 @@ const LeadDetails = () => {
     fromDate,
     toDate,
     assignedFilter,
+    page,
   ])
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [page, totalPages])
+
+  const resetToFirstPage = () => {
+    setPage(1)
+    setSelectedLeadIds([])
+  }
+
+  const displayedRange = totalLeads === 0
+    ? 'No leads found'
+    : `${(page - 1) * PAGE_SIZE + 1}-${Math.min(page * PAGE_SIZE, totalLeads)} of ${totalLeads}`
 
   const handleImportLeads = async (file) => {
     if (!file) {
@@ -573,9 +615,10 @@ const LeadDetails = () => {
             placeholder="Search leads..."
             value={filterQuery}
             onChange={(e) =>
-              setFilterQuery(
-                e.target.value
-              )
+              (() => {
+                setFilterQuery(e.target.value)
+                resetToFirstPage()
+              })()
             }
             className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] py-2.5 pl-11 pr-4 text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
           />
@@ -585,7 +628,10 @@ const LeadDetails = () => {
           type="date"
           value={fromDate}
           onChange={(e) =>
-            setFromDate(e.target.value)
+            (() => {
+              setFromDate(e.target.value)
+              resetToFirstPage()
+            })()
           }
           className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
         />
@@ -594,7 +640,10 @@ const LeadDetails = () => {
           type="date"
           value={toDate}
           onChange={(e) =>
-            setToDate(e.target.value)
+            (() => {
+              setToDate(e.target.value)
+              resetToFirstPage()
+            })()
           }
           className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-[var(--text)] focus:border-[var(--primary)] focus:outline-none"
         />
@@ -628,7 +677,7 @@ const LeadDetails = () => {
                   type="button"
                   onClick={() => {
                     setAssignedFilter(value)
-                    setSelectedLeadIds([])
+                    resetToFirstPage()
                   }}
                   className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                     assignedFilter === value
@@ -861,6 +910,33 @@ const LeadDetails = () => {
                 )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-[var(--border)] px-5 py-4 text-sm text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
+          <span>{displayedRange}</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.max(current - 1, 1))}
+              disabled={page === 1 || loading}
+              aria-label="Previous page"
+              className="rounded-lg border border-[var(--border)] p-2 text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft size={17} />
+            </button>
+            <span className="min-w-24 text-center font-medium text-[var(--text)]">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.min(current + 1, totalPages))}
+              disabled={page >= totalPages || loading}
+              aria-label="Next page"
+              className="rounded-lg border border-[var(--border)] p-2 text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronRight size={17} />
+            </button>
+          </div>
         </div>
       </div>
 

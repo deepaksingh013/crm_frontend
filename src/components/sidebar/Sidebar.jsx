@@ -1,18 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import {
-  NavLink,
-  useLocation,
-} from 'react-router-dom'
-import {
-  Users2,
-  ListCheck,
-  Podium,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  MonitorCog,
-  LogOut,
-} from 'lucide-react'
+import { NavLink, useLocation, } from 'react-router-dom'
+import { Users2, ListCheck, Podium, X, ChevronLeft, ChevronRight, MonitorCog, LogOut, CircleUser,} from 'lucide-react'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 import ConfirmationModal from './ConfirmationModal'
@@ -37,6 +25,12 @@ const ADMIN_MENU = [
     path: '/leads',
     icon: ListCheck,
     permission: 'leads',
+  },
+  {
+    label: 'Telecaller List',
+    path: '/telecallers',
+    icon: CircleUser,
+    permission: 'telecallers',
   },
   {
     label: 'Device Management',
@@ -131,7 +125,6 @@ const Sidebar = ({
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  // Fetch logged-in user
   useEffect(() => {
     const fetchUser = async () => {
       const token = Cookies.get('token')
