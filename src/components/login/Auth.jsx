@@ -7,7 +7,6 @@ import {
   EyeOff,
   LockKeyhole,
   Mail,
-  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import axios from "axios";
@@ -190,75 +189,13 @@ const Auth = () => {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--bg)] px-4 py-8">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div
-          className="
-            absolute
-            -left-32
-            -top-32
-            h-80
-            w-80
-            rounded-full
-            bg-[var(--primary)]
-            opacity-[0.08]
-            blur-3xl
-            animate-[pulse_5s_ease-in-out_infinite]
-          "
-        />
-
-        <div
-          className="
-            absolute
-            -bottom-32
-            -right-32
-            h-96
-            w-96
-            rounded-full
-            bg-[var(--accent)]
-            opacity-[0.08]
-            blur-3xl
-            animate-[pulse_6s_ease-in-out_infinite]
-          "
-        />
-
-        <div
-          className="
-            absolute
-            left-1/2
-            top-1/2
-            h-72
-            w-72
-            -translate-x-1/2
-            -translate-y-1/2
-            rounded-full
-            bg-[var(--primary)]
-            opacity-[0.025]
-            blur-3xl
-          "
-        />
+        <div className=" absolute -left-32 -top-32 h-80 w-80 rounded-full bg-[var(--primary)] opacity-[0.08] blur-3xl animate-[pulse_5s_ease-in-out_infinite]" />
+        <div className=" absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-[var(--accent)] opacity-[0.08] blur-3xl animate-[pulse_6s_ease-in-out_infinite]" />
+        <div className=" absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--primary)] opacity-[0.025] blur-3xl"/>
       </div>
-      <div
-        className="
-          relative
-          z-10
-          w-full
-          max-w-md
-          animate-[fadeInUp_0.7s_ease-out]
-        "
-      >
+      <div className=" relative z-10 w-full max-w-md animate-[fadeInUp_0.7s_ease-out] ">
         {/* Glow */}
-        <div
-          className="
-            absolute
-            -inset-1
-            rounded-[2rem]
-            bg-gradient-to-r
-            from-[var(--primary)]
-            via-[var(--accent)]
-            to-[var(--primary)]
-            opacity-10
-            blur-xl
-          "
-        />
+        <div className=" absolute -inset-1 rounded-[2rem] bg-gradient-to-r from-[var(--primary)] via-[var(--accent)] to-[var(--primary)] opacity-10 blur-xl"/>
 
         <form
           onSubmit={handleSubmit}
@@ -278,27 +215,13 @@ const Auth = () => {
             sm:p-8
           "
         >
-          <div className="mb-8 text-center">
-            <div
-              className="
-                mx-auto
-                mb-5
-                flex
-                h-16
-                w-16
-                items-center
-                justify-center
-                rounded-2xl
-                bg-[var(--primary)]
-                text-white
-                shadow-lg
-                shadow-[var(--primary)]/20
-                transition-transform
-                duration-300
-                hover:scale-105
-              "
-            >
-              <ShieldCheck size={31} strokeWidth={1.8} />
+          <div className="mb-4 text-center">
+            <div className=" mx-auto mb-3 flex h-16 w-[140px] items-center justify-center transition-transform duration-300 hover:scale-105">
+              <img
+                src="/final_logo.png"
+                alt="Apna India logo"
+                className="object-contain"
+              />
             </div>
 
             <div className="mb-2 flex items-center justify-center gap-2">
