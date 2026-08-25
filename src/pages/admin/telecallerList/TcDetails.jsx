@@ -24,6 +24,14 @@ const formatDate = (value) => {
   return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+const formatDateTime = (value) => {
+  if (!value) return 'N/A'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
+
 const getLeadValue = (lead, keys, fallback = 'N/A') => {
   const key = keys.find((item) => lead?.[item] !== undefined && lead?.[item] !== null && lead?.[item] !== '')
   return key ? lead[key] : fallback
@@ -59,6 +67,8 @@ const TcDetails = () => {
   const telecaller = location.state?.telecaller
   const assignedTo = telecaller?.assignedTo || {}
   const [leads, setLeads] = useState([])
+  const [campaigns, setCampaigns] = useState([])
+  const [selectedCampaign, setSelectedCampaign] = useState('')
   const [activeStatus, setActiveStatus] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -68,6 +78,25 @@ const TcDetails = () => {
   const [selectedLeadIds, setSelectedLeadIds] = useState([])
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
+
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      const token = Cookies.get('token')
+      if (!token) return
+
+      try {
+        const response = await axios.get(`${API_URL}/campaigns`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const campaignList = response.data?.campaigns || response.data || []
+        setCampaigns(Array.isArray(campaignList) ? campaignList : [])
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || 'Failed to fetch campaigns.')
+      }
+    }
+
+    fetchCampaigns()
+  }, [])
 
   const fetchLeads = useCallback(async () => {
     const token = Cookies.get('token')
@@ -82,6 +111,7 @@ const TcDetails = () => {
     try {
       const params = { page, limit: PAGE_SIZE }
       if (activeStatus) params.status = activeStatus
+      if (selectedCampaign) params.campaignId = selectedCampaign
       const response = await axios.get(`${API_URL}/leads/user/${telecallerId}`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
@@ -114,7 +144,7 @@ const TcDetails = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [activeStatus, page, telecallerId])
+  }, [activeStatus, page, selectedCampaign, telecallerId])
 
   useEffect(() => {
     fetchLeads()
@@ -134,6 +164,12 @@ const TcDetails = () => {
 
   const handleTabChange = (status) => {
     setActiveStatus(status)
+    setPage(1)
+    setSelectedLeadIds([])
+  }
+
+  const handleCampaignChange = (event) => {
+    setSelectedCampaign(event.target.value)
     setPage(1)
     setSelectedLeadIds([])
   }
@@ -210,16 +246,27 @@ const TcDetails = () => {
         </div>
       </div>}
 
-      <div className="overflow-x-auto border-b border-[var(--border)]">
-        <div className="flex min-w-max gap-1">
-          {tabs.map((tab) => <button key={tab.value || 'all'} type="button" onClick={() => handleTabChange(tab.value)} className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${activeStatus === tab.value ? 'border-[var(--primary)] text-[var(--primary)]' : 'border-transparent text-[var(--muted)] hover:text-[var(--text)]'}`}>{tab.label}</button>)}
+      <div className="flex flex-col gap-3 border-b border-[var(--border)] pb-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="overflow-x-auto">
+          <div className="flex min-w-max gap-1">
+            {tabs.map((tab) => <button key={tab.value || 'all'} type="button" onClick={() => handleTabChange(tab.value)} className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${activeStatus === tab.value ? 'border-[var(--primary)] text-[var(--primary)]' : 'border-transparent text-[var(--muted)] hover:text-[var(--text)]'}`}>{tab.label}</button>)}
+          </div>
         </div>
+        <label className="flex shrink-0 items-center gap-2 text-sm font-semibold text-[var(--text)]">
+          <select value={selectedCampaign} onChange={handleCampaignChange} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 font-normal text-[var(--text)] outline-none focus:border-[var(--primary)]">
+            <option value="">All campaigns</option>
+            {campaigns.map((campaign) => {
+              const campaignId = campaign._id || campaign.id
+              return <option key={campaignId} value={campaignId}>{campaign.title || campaign.name || 'Untitled campaign'}</option>
+            })}
+          </select>
+        </label>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-[850px] w-full border-collapse text-left text-sm">
-            <thead><tr className="border-b border-[var(--border)]"><th className="px-5 py-4"><input type="checkbox" checked={allLeadsSelected} onChange={toggleSelectAllRows} disabled={leads.length === 0 || isLoading} aria-label="Select all leads on this page" className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /></th>{['Lead', 'Phone', 'Email', 'Campaign', 'Status', 'Created'].map((heading) => <th key={heading} className="px-5 py-4 font-semibold text-[var(--muted)]">{heading}</th>)}</tr></thead>
+            <thead><tr className="border-b border-[var(--border)]"><th className="px-5 py-4"><input type="checkbox" checked={allLeadsSelected} onChange={toggleSelectAllRows} disabled={leads.length === 0 || isLoading} aria-label="Select all leads on this page" className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /></th>{['Lead', 'Phone', 'Email', 'Campaign', 'Status', 'Created', 'Last activity'].map((heading) => <th key={heading} className="px-5 py-4 font-semibold text-[var(--muted)]">{heading}</th>)}</tr></thead>
             <tbody className="divide-y divide-[var(--border)]">
               {isLoading ? <tr><td colSpan={7} className="py-14 text-center"><span className="inline-flex items-center gap-2 text-[var(--muted)]"><Loader2 size={20} className="animate-spin" />Loading leads...</span></td></tr>
                 : leads.length === 0 ? <tr><td colSpan={7} className="py-14 text-center text-[var(--muted)]">No leads found for this status.</td></tr>
@@ -235,6 +282,7 @@ const TcDetails = () => {
                       <td className="px-5 py-4 text-[var(--muted)]">{formatDisplayValue(lead.campaign || lead.campaignName || getLeadValue(lead, ['campaign'], 'N/A'))}</td>
                       <td className="px-5 py-4"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(status)}`}>{status}</span></td>
                       <td className="px-5 py-4 text-[var(--muted)]">{formatDate(lead.createdAt || lead.createdDate)}</td>
+                      <td className="whitespace-nowrap px-5 py-4 text-[var(--muted)]">{formatDateTime(lead.activityAt || lead.lastActivityAt || lead.assignedAt || lead.updatedAt || lead.createdAt || lead.createdDate)}</td>
                     </tr>
                   })}
             </tbody>

@@ -25,6 +25,22 @@ const formatDate = (dateString) => {
   })
 }
 
+const formatDateTime = (value) => {
+  if (!value) return 'N/A'
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return 'N/A'
+
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 const getCampaignTitle = (campaign) => {
   if (!campaign || typeof campaign !== 'object') {
     return 'Campaign'
@@ -778,6 +794,10 @@ const LeadDetails = () => {
                 </th>
 
                 <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  Last activity
+                </th>
+
+                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
                   Action
                 </th>
               </tr>
@@ -880,6 +900,16 @@ const LeadDetails = () => {
                       <td className="px-6 py-4 text-[var(--muted)]">
                         {row.assignedTo?.name ||
                           'N/A'}
+                      </td>
+
+                      <td className="whitespace-nowrap px-6 py-4 text-[var(--muted)]">
+                        {formatDateTime(
+                          row.activityAt ||
+                          row.lastActivityAt ||
+                          row.assignedAt ||
+                          row.updatedAt ||
+                          row.createdAt
+                        )}
                       </td>
 
                       <td className="px-6 py-4">

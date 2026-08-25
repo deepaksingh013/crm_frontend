@@ -23,6 +23,22 @@ const formatDate = (value) => {
   });
 };
 
+const formatDateTime = (value) => {
+  if (!value) return 'N/A';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return 'N/A';
+
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 const getStatusLabel = (status) => {
   const normalized = normalizeSalesStatus(status);
 
@@ -483,6 +499,7 @@ const SalesManagment = () => {
                       <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Phone</th>
                       <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Pincode</th>
                       <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Status</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Last activity</th>
                       <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold">Action</th>
                     </tr>
                   </thead>
@@ -494,6 +511,7 @@ const SalesManagment = () => {
                       const leadPhone = getLeadValue(lead, ['phone', 'mobile', 'phoneNumber', 'contact']);
                       const leadPincode = getLeadValue(lead, ['pincode', 'pinCode', 'postalCode', 'zipCode']);
                       const leadDate = getLeadValue(lead, ['createdAt', 'created_at', 'updatedAt', 'date', 'leadDate'], '');
+                      const activityDate = getLeadValue(lead, ['activityAt', 'lastActivityAt', 'statusUpdatedAt', 'assignedAt', 'updatedAt', 'createdAt'], '');
                       const leadId = lead._id || lead.id || index;
 
                       return (
@@ -519,6 +537,7 @@ const SalesManagment = () => {
                               {getStatusLabel(leadStatus)}
                             </span>
                           </td>
+                          <td className="whitespace-nowrap px-4 py-4 text-gray-600">{formatDateTime(activityDate)}</td>
                           <td className="whitespace-nowrap px-4 py-4 text-right">
                             <button
                               type="button"

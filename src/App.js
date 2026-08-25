@@ -18,12 +18,12 @@ import Leadmanagment from './pages/admin/leadManagment/Leadmanagment'
 import Report from './pages/admin/reports/Report'
 
 import { setUserFromCookies } from './features/auth/authSlice'
-import DeviceManagment from './pages/deviceManagment/DeviceManagment'
 import CommingSoon from './components/CommingSoon'
 import TcDashboard from './pages/telecaller/dashboard/Dashboard'
 import SalesManagment from './pages/telecaller/salesManagment/SalesManagment'
 import TcList from './pages/admin/telecallerList/TcList'
 import TcDetails from './pages/admin/telecallerList/TcDetails'
+import DeviceManagment from './pages/admin/deviceManagment/DeviceManagment'
 
 const MainLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)

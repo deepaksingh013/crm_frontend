@@ -3,7 +3,7 @@ import axios from 'axios'
 import Cookies from 'js-cookie'
 import toast from 'react-hot-toast'
 import { AlertCircle, Check, } from 'lucide-react'
-import DynamicTable from '../../components/table/DynamicTable'
+import DynamicTable from '../../../components/table/DynamicTable'
 import ConfirmationModal from './ConfirmationModal'
 const API_URL = 'https://crm-backend-5-iocr.onrender.com/api'
 
