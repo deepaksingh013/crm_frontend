@@ -104,3 +104,137 @@ body {
   background: linear-gradient(90deg, #0f766e, #10b981);
 }
 
+.lead-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-alt) 25%,
+    rgba(148, 163, 184, 0.22) 50%,
+    var(--surface-alt) 75%
+  );
+  background-size: 200% 100%;
+  animation: lead-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes lead-skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .lead-table-scroll {
+    overflow-x: visible;
+  }
+
+  .lead-table {
+    display: block;
+    min-width: 0;
+  }
+
+  .lead-table thead {
+    display: none;
+  }
+
+  .lead-table tbody,
+  .lead-table tr,
+  .lead-table td {
+    display: block;
+  }
+
+  .lead-table tbody {
+    padding: 0.75rem;
+  }
+
+  .lead-table tr {
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0;
+  }
+
+  .lead-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .lead-table td {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    min-height: 2.25rem;
+    padding: 0.55rem 0.85rem;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .lead-table td::before {
+    color: var(--muted);
+    content: attr(data-label);
+    flex: 0 0 7rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .lead-table td:first-child {
+    justify-content: flex-start;
+  }
+
+  .lead-table td:first-child::before {
+    flex-basis: 7rem;
+  }
+
+  .lead-table td > * {
+    max-width: calc(100% - 8rem);
+  }
+
+  .lead-table td:nth-child(6) {
+    overflow-wrap: anywhere;
+  }
+
+  .lead-table .lead-skeleton {
+    margin-left: auto;
+  }
+
+  .lead-table-loading thead {
+    display: table-header-group;
+  }
+
+  .lead-table-loading tbody,
+  .lead-table-loading tr,
+  .lead-table-loading td {
+    display: table-row;
+  }
+
+  .lead-table-loading tbody {
+    display: table-row-group;
+    padding: 0;
+  }
+
+  .lead-table-loading td {
+    padding: 0.85rem;
+  }
+
+  .lead-table-loading td::before {
+    content: none;
+  }
+
+  .lead-empty-row td {
+    display: block;
+    text-align: center;
+  }
+
+  .lead-empty-row td::before {
+    content: none;
+  }
+
+  .lead-empty-row td > div {
+    max-width: 100%;
+  }
+}
+

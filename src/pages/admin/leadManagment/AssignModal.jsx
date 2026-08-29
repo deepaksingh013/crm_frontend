@@ -70,7 +70,7 @@ const AssignModal = ({
           try {
             const data = JSON.parse(text)
             msg = data?.message || data?.error || msg
-          } catch { }
+          } catch {}
 
           throw new Error(msg)
         }
@@ -140,10 +140,10 @@ const AssignModal = ({
     return users.filter((u) => {
       const name = String(
         u?.name ||
-        u?.fullName ||
-        u?.username ||
-        u?.email ||
-        ''
+          u?.fullName ||
+          u?.username ||
+          u?.email ||
+          ''
       ).toLowerCase()
 
       const email = String(u?.email || '').toLowerCase()
@@ -151,62 +151,40 @@ const AssignModal = ({
       return name.includes(search) || email.includes(search)
     })
   }, [users, searchTc])
+
   const handleTcClick = (tcId) => {
     setSelectedTcId(tcId)
     setLocalError(null)
   }
 
-  const hasSelectedLeads = Array.isArray(selectedLeadIds) && selectedLeadIds.length > 0
+  const hasSelectedLeads =
+    Array.isArray(selectedLeadIds) && selectedLeadIds.length > 0
 
+  // ---------------------------------------------------------
+  // ASSIGN
+  // Frontend validation removed.
+  // Backend will validate everything.
+  // ---------------------------------------------------------
   const handleSubmit = async () => {
     setLocalError(null)
-
-    if (!selectedTcId) {
-      setLocalError('Please select a TC to assign leads to.')
-      return
-    }
 
     if (typeof onAssign !== 'function') {
       setLocalError('Assign handler not provided')
       return
     }
 
-    if (hasSelectedLeads) {
-      try {
-        const ok = await onAssign(
-          selectedLeadIds.length,
-          selectedTcId,
-          selectedLeadIds
-        )
-
-        if (ok) {
-          onClose()
-        }
-      } catch (err) {
-        console.error('Assign modal error:', err)
-
-        toast.error(err?.message || 'Failed to assign leads')
-      }
-      return
-    }
-
-    const count = Number(assignCount)
-
-    if (!Number.isFinite(count) || count <= 0) {
-      setLocalError('Please enter a valid number of leads to assign.')
-      return
-    }
-
-    if (count > Number(leadsCount)) {
-      setLocalError(
-        `You can assign maximum ${leadsCount} lead${leadsCount === 1 ? '' : 's'
-        }.`
-      )
-      return
-    }
-
     try {
-      const ok = await onAssign(count, selectedTcId, [])
+      const count = hasSelectedLeads
+        ? selectedLeadIds.length
+        : Number(assignCount)
+
+      const leadIds = hasSelectedLeads ? selectedLeadIds : []
+
+      const ok = await onAssign(
+        count,
+        selectedTcId,
+        leadIds
+      )
 
       if (ok) {
         onClose()
@@ -214,7 +192,14 @@ const AssignModal = ({
     } catch (err) {
       console.error('Assign modal error:', err)
 
-      toast.error(err?.message || 'Failed to assign leads')
+      const message =
+        err?.response?.data?.message ||
+        err?.data?.message ||
+        err?.message ||
+        'Failed to assign leads'
+
+      setLocalError(message)
+      toast.error(message)
     }
   }
 
@@ -271,6 +256,7 @@ const AssignModal = ({
           </div>
         </div>
 
+        {/* Number of leads */}
         {!hasSelectedLeads && (
           <div className="mb-4">
             <label className="mb-1 block text-sm text-[var(--muted)]">
@@ -279,8 +265,6 @@ const AssignModal = ({
 
             <input
               type="number"
-              min={1}
-              max={leadsCount}
               value={assignCount}
               onChange={(e) => {
                 setAssignCount(e.target.value)
@@ -293,6 +277,7 @@ const AssignModal = ({
           </div>
         )}
 
+        {/* Selected Leads Info */}
         {hasSelectedLeads && (
           <div className="mb-4 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3 text-sm text-[var(--text)]">
             Assigning the selected leads to the chosen telecaller.
@@ -318,11 +303,13 @@ const AssignModal = ({
               placeholder="Search TC by name..."
               className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 pr-10 text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none disabled:opacity-50"
             />
+
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
               🔍
             </span>
           </div>
 
+          {/* Loading */}
           {usersLoading ? (
             <div className="rounded-xl border border-[var(--border)] p-4 text-center text-sm text-[var(--muted)]">
               Loading TC list...
@@ -353,10 +340,11 @@ const AssignModal = ({
                         type="button"
                         disabled={isAssigning}
                         onClick={() => handleTcClick(tcId)}
-                        className={`w-full rounded-xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${isSelected
+                        className={`w-full rounded-xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                          isSelected
                             ? 'border-[var(--primary)] bg-[var(--primary)]/10'
                             : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-alt)]'
-                          }`}
+                        }`}
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
@@ -433,12 +421,14 @@ const AssignModal = ({
           </div>
         )}
 
+        {/* Backend Error */}
         {localError && (
           <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-500">
             {localError}
           </div>
         )}
 
+        {/* Buttons */}
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -452,14 +442,14 @@ const AssignModal = ({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={
-              isAssigning ||
-              !selectedTcId ||
-              (!hasSelectedLeads && (!assignCount || Number(assignCount) <= 0))
-            }
+            disabled={isAssigning}
             className="rounded-xl bg-[var(--primary)] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isAssigning ? 'Assigning...' : hasSelectedLeads ? 'Assign Selected' : 'Assign'}
+            {isAssigning
+              ? 'Assigning...'
+              : hasSelectedLeads
+                ? 'Assign Selected'
+                : 'Assign'}
           </button>
         </div>
       </div>
