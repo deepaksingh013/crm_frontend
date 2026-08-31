@@ -242,7 +242,7 @@ const TcDetails = () => {
         <span className="text-sm text-[var(--muted)]">{selectedLeadIds.length > 0 ? `${selectedLeadIds.length} lead${selectedLeadIds.length === 1 ? '' : 's'} selected` : `${total} leads available`}</span>
         <div className="flex items-center gap-3">
           {selectedLeadIds.length > 0 && <button type="button" onClick={() => setSelectedLeadIds([])} className="text-sm font-semibold text-[var(--primary)]">Clear selection</button>}
-          <button type="button" onClick={() => setIsAssignModalOpen(true)} disabled={leads.length === 0 || isAssigning} className="rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50">Assign leads</button>
+          {/* <button type="button" onClick={() => setIsAssignModalOpen(true)} disabled={leads.length === 0 || isAssigning} className="rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50">Assign leads</button> */}
         </div>
       </div>}
 
@@ -266,7 +266,7 @@ const TcDetails = () => {
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-[850px] w-full border-collapse text-left text-sm">
-            <thead><tr className="border-b border-[var(--border)]"><th className="px-5 py-4"><input type="checkbox" checked={allLeadsSelected} onChange={toggleSelectAllRows} disabled={leads.length === 0 || isLoading} aria-label="Select all leads on this page" className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /></th>{['Lead', 'Phone', 'Email', 'Campaign', 'Status', 'Created', 'Last activity'].map((heading) => <th key={heading} className="px-5 py-4 font-semibold text-[var(--muted)]">{heading}</th>)}</tr></thead>
+            <thead><tr className="border-b border-[var(--border)]"><th className="px-5 py-4">{/* <input type="checkbox" checked={allLeadsSelected} onChange={toggleSelectAllRows} disabled={leads.length === 0 || isLoading} aria-label="Select all leads on this page" className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /> */}</th>{['Lead', 'Phone', 'Email', 'Campaign', 'Status', 'Created', 'Last activity'].map((heading) => <th key={heading} className="px-5 py-4 font-semibold text-[var(--muted)]">{heading}</th>)}</tr></thead>
             <tbody className="divide-y divide-[var(--border)]">
               {isLoading ? <tr><td colSpan={7} className="py-14 text-center"><span className="inline-flex items-center gap-2 text-[var(--muted)]"><Loader2 size={20} className="animate-spin" />Loading leads...</span></td></tr>
                 : leads.length === 0 ? <tr><td colSpan={7} className="py-14 text-center text-[var(--muted)]">No leads found for this status.</td></tr>
@@ -275,7 +275,7 @@ const TcDetails = () => {
                     const status = formatDisplayValue(getLeadValue(lead, ['status'], 'Unknown'), 'Unknown')
                     const leadId = lead._id || lead.id
                     return <tr key={leadId || index} className="hover:bg-[var(--surface-alt)]">
-                      <td className="px-5 py-4"><input type="checkbox" checked={Boolean(leadId && selectedLeadIds.includes(leadId))} onChange={() => toggleLeadSelection(leadId)} disabled={!leadId} aria-label={`Select ${leadName}`} className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /></td>
+                      <td className="px-5 py-4">{/* <input type="checkbox" checked={Boolean(leadId && selectedLeadIds.includes(leadId))} onChange={() => toggleLeadSelection(leadId)} disabled={!leadId} aria-label={`Select ${leadName}`} className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /> */}</td>
                       <td className="px-5 py-4 font-semibold text-[var(--text)]">{leadName}</td>
                       <td className="px-5 py-4 text-[var(--muted)]">{formatDisplayValue(getLeadValue(lead, ['phone', 'mobile', 'phoneNumber']))}</td>
                       <td className="px-5 py-4 text-[var(--muted)]">{formatDisplayValue(getLeadValue(lead, ['email']))}</td>
