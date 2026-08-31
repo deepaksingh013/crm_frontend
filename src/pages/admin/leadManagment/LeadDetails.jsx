@@ -542,14 +542,6 @@ const getUserName = (user) =>
     setSelectedLeadIds([])
   }
 
-  // const clearAllFilters = () => {
-  //   setFilterQuery('')
-  //   setFromDate('')
-  //   setToDate('')
-  //   setSelectedTcId('')
-  //   setPage(1)
-  //   setSelectedLeadIds([])
-  // }
 
   const handleImportLeads = async (
     file
@@ -746,7 +738,9 @@ const getUserName = (user) =>
               },
               body: JSON.stringify({
                 count: leadCount,
+                status: statusFilter,
                 userId: tcId,
+                ...(selectedTcId ? { fromUserId: selectedTcId } : {}),
               }),
             }
           )
