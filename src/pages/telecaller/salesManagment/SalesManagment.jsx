@@ -324,13 +324,16 @@ const SalesManagment = () => {
 
   if (showCampaignPicker) {
     return (
-      <main className="min-h-screen bg-[#f5f7fa]">
-        <div className="mx-auto min-h-screen w-full max-w-[1400px] px-3 py-5 sm:px-5 sm:py-7 md:px-7 lg:px-10">
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-800 sm:text-3xl">
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto min-h-screen w-full max-w-[1400px] px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+          <div className="mb-5 sm:mb-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">
+              Sales Management
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Select Campaign
             </h1>
-            <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+            <p className="mt-1 text-sm text-slate-500">
               Choose a campaign to view the relevant sales leads.
             </p>
           </div>
@@ -364,23 +367,23 @@ const SalesManagment = () => {
           )}
 
           {campaigns.length > 0 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-5 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4 xl:grid-cols-3">
               {campaigns.map((campaign) => (
                 <div
                   key={campaign.id}
                   onClick={() => openCampaign(campaign)}
-                  className="group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+                  className="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-lg"
                 >
                   <div className="absolute left-0 right-0 top-0 h-[3px] bg-gradient-to-r from-teal-700 to-purple-600" />
-                  <div className="p-5 sm:p-6">
-                    <h2 className="truncate pr-2 text-base font-bold text-gray-800 sm:text-lg">
+                  <div className="p-4 sm:p-5">
+                    <h2 className="truncate pr-2 text-base font-bold text-slate-900 sm:text-lg">
                       {campaign.name}
                     </h2>
                     <div className="mt-2 flex items-baseline gap-2">
                       <span className="text-3xl font-bold leading-none text-teal-700 sm:text-[32px]">
                         {campaign.totalLeads ?? 0}
                       </span>
-                      <span className="text-xs text-gray-400 sm:text-sm">Total Leads</span>
+                        <span className="text-xs text-slate-400 sm:text-sm">Total Leads</span>
                     </div>
                     <div className="my-4 border-t border-gray-100" />
                     <div className="grid grid-cols-2 gap-2">
@@ -393,7 +396,7 @@ const SalesManagment = () => {
                       <StatusBox label="Not Connected" count={campaign.notConnected} className="border-gray-100 bg-gray-50 text-gray-700" />
                     </div>
                     <div className="my-4 border-t border-gray-100" />
-                    <div className="text-center text-xs text-gray-400 transition-colors group-hover:text-teal-700">
+                    <div className="text-center text-xs font-medium text-slate-400 transition-colors group-hover:text-teal-700">
                       Click to view sales management
                     </div>
                   </div>
@@ -407,18 +410,18 @@ const SalesManagment = () => {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f7fa]">
-      <div className="mx-auto w-full max-w-7xl px-3 py-5 sm:px-6 sm:py-8">
-        <div className="rounded-2xl bg-white p-5 shadow-sm sm:p-7">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto w-full max-w-[1400px] px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
                 Sales Management
               </p>
-              <h1 className="mt-1 text-2xl font-bold text-gray-800 sm:text-3xl">
+              <h1 className="mt-1 break-words text-2xl font-bold text-slate-900 sm:text-3xl">
                 {selectedCampaign?.name || 'Campaign Sales'}
               </h1>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-slate-500">
                 {status ? `Showing ${getStatusLabel(status)} leads` : 'Manage and update your campaign leads.'}
               </p>
             </div>
@@ -426,20 +429,21 @@ const SalesManagment = () => {
             <button
               type="button"
               onClick={() => navigate('/sales-management')}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
             >
               Change Campaign
             </button>
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm sm:p-7">
-          <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-5 sm:p-5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-gray-800">Lead Details</h2>
+              <h2 className="text-lg font-bold text-slate-900">Lead Details</h2>
+              <p className="mt-0.5 text-xs text-slate-500">{leads.length} lead{leads.length === 1 ? '' : 's'} in this view</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex max-w-full gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:justify-end sm:overflow-visible sm:pb-0">
               {Object.entries(SALES_STATUS_LABELS).map(([statusKey, label]) => {
                 const isActive = normalizeSalesStatus(status) === statusKey;
 
@@ -448,7 +452,7 @@ const SalesManagment = () => {
                     key={statusKey}
                     type="button"
                     onClick={() => navigate(createSalesManagementRoute(campaignId, statusKey))}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -489,9 +493,9 @@ const SalesManagment = () => {
           )}
 
           {!loading && leads.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-gray-200">
+            <div className="lead-table-scroll overflow-hidden rounded-lg border border-slate-200">
               <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse text-left text-sm">
+                <table className="lead-table min-w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-gray-500">
                       <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Date</th>
@@ -515,9 +519,9 @@ const SalesManagment = () => {
                       const leadId = lead._id || lead.id || index;
 
                       return (
-                        <tr key={leadId} className="border-b border-gray-100 transition last:border-b-0 hover:bg-gray-50">
-                          <td className="whitespace-nowrap px-4 py-4 text-gray-600">{formatDate(leadDate)}</td>
-                          <td className="whitespace-nowrap px-4 py-4">
+                        <tr key={leadId} className="border-b border-gray-100 transition last:border-b-0 hover:bg-slate-50">
+                          <td data-label="Date" className="whitespace-nowrap px-3 py-3 text-gray-600">{formatDate(leadDate)}</td>
+                          <td data-label="Name" className="whitespace-nowrap px-3 py-3">
                             <div className="flex items-center gap-2.5">
                               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-xs font-bold text-red-600">
                                 {String(leadName)
@@ -530,15 +534,15 @@ const SalesManagment = () => {
                               <span className="font-semibold text-gray-800">{leadName}</span>
                             </div>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-4 text-gray-600">{leadPhone}</td>
-                          <td className="whitespace-nowrap px-4 py-4 text-gray-600">{leadPincode}</td>
-                          <td className="whitespace-nowrap px-4 py-4">
+                          <td data-label="Phone" className="whitespace-nowrap px-3 py-3 text-gray-600">{leadPhone}</td>
+                          <td data-label="Pincode" className="whitespace-nowrap px-3 py-3 text-gray-600">{leadPincode}</td>
+                          <td data-label="Status" className="whitespace-nowrap px-3 py-3">
                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusStyle(leadStatus)}`}>
                               {getStatusLabel(leadStatus)}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-4 text-gray-600">{formatDateTime(activityDate)}</td>
-                          <td className="whitespace-nowrap px-4 py-4 text-right">
+                          <td data-label="Last activity" className="whitespace-nowrap px-3 py-3 text-gray-600">{formatDateTime(activityDate)}</td>
+                          <td data-label="Action" className="whitespace-nowrap px-3 py-3 text-right">
                             <button
                               type="button"
                               onClick={() => openStatusModal(lead)}
