@@ -132,12 +132,12 @@ const Leadmanagment = () => {
               ) : filteredCampaigns.length > 0 ? (
                 filteredCampaigns.map((campaign) => {
                   const statusCount = campaign.statusCount || {}
+                  const newLeads = statusCount.new || 0
+                  const pending = statusCount.pending || 0
                   const complete = statusCount.complete || 0
                   const reject = statusCount.reject || 0
                   const holding = statusCount.holding || 0
                   const notConnected = statusCount.notConnected || 0
-                  const newLeads = 0
-                  const pending = 0
 
                   return (
                     <tr key={campaign.campaignId} className="hover:bg-[var(--surface-alt)]">

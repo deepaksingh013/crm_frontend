@@ -174,26 +174,26 @@ const TcDetails = () => {
     setSelectedLeadIds([])
   }
 
-  const toggleLeadSelection = (leadId) => {
-    if (!leadId) return
+  // const toggleLeadSelection = (leadId) => {
+  //   if (!leadId) return
 
-    setSelectedLeadIds((current) => (
-      current.includes(leadId)
-        ? current.filter((id) => id !== leadId)
-        : [...current, leadId]
-    ))
-  }
+  //   setSelectedLeadIds((current) => (
+  //     current.includes(leadId)
+  //       ? current.filter((id) => id !== leadId)
+  //       : [...current, leadId]
+  //   ))
+  // }
 
-  const visibleLeadIds = leads.map((lead) => lead._id || lead.id).filter(Boolean)
-  const allLeadsSelected = visibleLeadIds.length > 0 && visibleLeadIds.every((id) => selectedLeadIds.includes(id))
+  // const visibleLeadIds = leads.map((lead) => lead._id || lead.id).filter(Boolean)
+  // const allLeadsSelected = visibleLeadIds.length > 0 && visibleLeadIds.every((id) => selectedLeadIds.includes(id))
 
-  const toggleSelectAllRows = () => {
-    setSelectedLeadIds((current) => (
-      allLeadsSelected
-        ? current.filter((id) => !visibleLeadIds.includes(id))
-        : [...new Set([...current, ...visibleLeadIds])]
-    ))
-  }
+  // const toggleSelectAllRows = () => {
+  //   setSelectedLeadIds((current) => (
+  //     allLeadsSelected
+  //       ? current.filter((id) => !visibleLeadIds.includes(id))
+  //       : [...new Set([...current, ...visibleLeadIds])]
+  //   ))
+  // }
 
   const reassignLeads = async (count, userId, selectedIds = []) => {
     const token = Cookies.get('token')
