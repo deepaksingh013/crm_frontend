@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { Search, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Upload, Loader2, UserRound, UserPlus, RotateCcw,} from 'lucide-react'
+import { Search, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Upload, Loader2, UserRound, UserPlus, RotateCcw, } from 'lucide-react'
 import ImportCampaignModal from './ImportCampaignModal'
 import AssignModal from './AssignModal'
 import toast from 'react-hot-toast'
@@ -59,28 +59,28 @@ const getCampaignTitle = (campaign) => {
 
 const STATUS_TABS = [
   {
-    label: 'New leads',
-    value: 'New',
-  },
-  {
     label: 'Pending',
     value: 'Pending',
+  },
+  {
+    label: 'Not Connected',
+    value: 'Not Connected',
   },
   {
     label: 'Completed',
     value: 'Complete',
   },
   {
-    label: 'Not contacted',
-    value: 'Not Connected',
+    label: 'Rejected',
+    value: 'Reject',
   },
   {
     label: 'Holding',
     value: 'Holding',
   },
   {
-    label: 'Rejected',
-    value: 'Reject',
+    label: 'New',
+    value: 'New',
   },
 ]
 
@@ -132,10 +132,10 @@ const getStatusClass = (status) => {
 const isTelecaller = (user) => {
   const role = String(
     user?.role ||
-      user?.userRole ||
-      user?.user?.role ||
-      user?.user?.userRole ||
-      ''
+    user?.userRole ||
+    user?.user?.role ||
+    user?.user?.userRole ||
+    ''
   )
     .toLowerCase()
     .trim()
@@ -167,7 +167,7 @@ const getUserName = (user) =>
   user?.user?.email ||
   'Unnamed telecaller'
 
-  const LeadDetails = () => {
+const LeadDetails = () => {
   const { id: campaignId } = useParams()
   const location = useLocation()
 
@@ -198,7 +198,7 @@ const getUserName = (user) =>
     useState('')
 
   const [statusFilter, setStatusFilter] =
-    useState('New')
+    useState('Pending')
 
   // TC filter
   const [selectedTcId, setSelectedTcId] =
@@ -212,6 +212,18 @@ const getUserName = (user) =>
 
   const [totalLeads, setTotalLeads] =
     useState(0)
+
+  const [, setStatusCounts] = useState({
+    Pending: 0,
+    'Not Connected': 0,
+    Complete: 0,
+    Reject: 0,
+    Holding: 0,
+    New: 0,
+  })
+
+  const [, setStatusCountsLoading] =
+    useState(false)
 
   const [page, setPage] =
     useState(1)
@@ -261,17 +273,17 @@ const getUserName = (user) =>
         if (!response.ok) {
           throw new Error(
             data?.message ||
-              data?.error ||
-              'Failed to fetch telecallers.'
+            data?.error ||
+            'Failed to fetch telecallers.'
           )
         }
 
         const users = Array.isArray(data)
           ? data
           : data?.users ||
-            data?.data?.users ||
-            data?.data ||
-            []
+          data?.data?.users ||
+          data?.data ||
+          []
 
         const tcUsers = Array.isArray(users)
           ? users.filter(isTelecaller)
@@ -281,7 +293,7 @@ const getUserName = (user) =>
       } catch (err) {
         setError(
           err?.message ||
-            'Failed to fetch telecallers.'
+          'Failed to fetch telecallers.'
         )
       } finally {
         setTelecallersLoading(false)
@@ -290,6 +302,122 @@ const getUserName = (user) =>
 
     fetchTelecallers()
   }, [])
+
+  // Fetch total lead count for every status.
+  // Uses limit=1 because we only need the API's total count.
+  const fetchStatusCounts = useCallback(async () => {
+    if (!campaignId) return
+
+    const token = Cookies.get('token')
+
+    if (!token) return
+
+    setStatusCountsLoading(true)
+
+    try {
+      const countResults = await Promise.all(
+        STATUS_TABS.map(async ({ value }) => {
+          const params = new URLSearchParams()
+
+          params.append('page', '1')
+          params.append('limit', '1')
+          params.append('status', value)
+
+          if (selectedTcId) {
+            params.append('assignedTo', selectedTcId)
+          }
+
+          const response = await fetch(
+            `${API_BASE_URL}/campaigns/${campaignId}/leads?${params.toString()}`,
+            {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          )
+
+          const responseText = await response.text()
+
+          let data = {}
+
+          try {
+            data = responseText
+              ? JSON.parse(responseText)
+              : {}
+          } catch {
+            data = {}
+          }
+
+          if (!response.ok) {
+            throw new Error(
+              data?.message ||
+              data?.error ||
+              `Failed to fetch ${value} count`
+            )
+          }
+
+          const pagination =
+            data?.pagination ||
+            data?.meta ||
+            data?.data?.pagination ||
+            data?.data?.meta ||
+            {}
+
+          const leadsData = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.leads)
+              ? data.leads
+              : Array.isArray(data?.data)
+                ? data.data
+                : Array.isArray(data?.data?.leads)
+                  ? data.data.leads
+                  : []
+
+          const total =
+            data?.total ??
+            data?.data?.total ??
+            data?.totalCount ??
+            data?.data?.totalCount ??
+            pagination.total ??
+            pagination.totalItems ??
+            leadsData.length
+
+          return {
+            status: value,
+            count: Number(total) || 0,
+          }
+        })
+      )
+
+      const newCounts = {
+        Pending: 0,
+        'Not Connected': 0,
+        Complete: 0,
+        Reject: 0,
+        Holding: 0,
+        New: 0,
+      }
+
+      countResults.forEach(({ status, count }) => {
+        newCounts[status] = count
+      })
+
+      setStatusCounts(newCounts)
+    } catch (err) {
+      console.error(
+        'Failed to fetch status counts:',
+        err
+      )
+    } finally {
+      setStatusCountsLoading(false)
+    }
+  }, [campaignId, selectedTcId])
+
+  useEffect(() => {
+    fetchStatusCounts()
+  }, [fetchStatusCounts])
 
   const fetchLeads = useCallback(async () => {
     if (!campaignId) return
@@ -406,7 +534,7 @@ const getUserName = (user) =>
           ? JSON.parse(responseText)
           : {}
       } catch {
-        throw new Error( 'Invalid response received from server.')
+        throw new Error('Invalid response received from server.')
       }
 
       let leadsData = []
@@ -431,7 +559,7 @@ const getUserName = (user) =>
 
       setLeads(leadsData)
 
-     
+
       const campaignData =
         data?.campaign ||
         data?.data?.campaign
@@ -439,7 +567,7 @@ const getUserName = (user) =>
       if (
         campaignData &&
         typeof campaignData ===
-          'object'
+        'object'
       ) {
         setCampaign((prev) => ({
           ...prev,
@@ -447,7 +575,7 @@ const getUserName = (user) =>
         }))
       }
 
-      
+
       const pagination =
         data?.pagination ||
         data?.meta ||
@@ -472,14 +600,14 @@ const getUserName = (user) =>
         Math.max(
           Math.ceil(
             Number(total) /
-              PAGE_SIZE
+            PAGE_SIZE
           ),
           1
         )
 
       setTotalLeads(
         Number(total) ||
-          leadsData.length
+        leadsData.length
       )
 
       setTotalPages(
@@ -491,7 +619,7 @@ const getUserName = (user) =>
     } catch (err) {
       setError(
         err?.message ||
-          'Something went wrong while fetching leads.'
+        'Something went wrong while fetching leads.'
       )
     } finally {
       setLoading(false)
@@ -506,7 +634,7 @@ const getUserName = (user) =>
     page,
   ])
 
- 
+
   useEffect(() => {
     const timer = setTimeout(
       () => {
@@ -536,7 +664,7 @@ const getUserName = (user) =>
     totalPages,
   ])
 
- 
+
   const resetToFirstPage = () => {
     setPage(1)
     setSelectedLeadIds([])
@@ -598,8 +726,8 @@ const getUserName = (user) =>
           const errorData =
             responseText
               ? JSON.parse(
-                  responseText
-                )
+                responseText
+              )
               : {}
 
           message =
@@ -617,6 +745,7 @@ const getUserName = (user) =>
       }
 
       await fetchLeads()
+      await fetchStatusCounts()
 
       setIsImportModalOpen(false)
 
@@ -628,7 +757,7 @@ const getUserName = (user) =>
     } catch (err) {
       toast.error(
         err?.message ||
-          'Failed to import leads.'
+        'Failed to import leads.'
       )
 
       throw err
@@ -704,7 +833,7 @@ const getUserName = (user) =>
     try {
       let response
 
-      
+
       if (hasSelectedLeads) {
         response =
           await fetch(
@@ -756,8 +885,8 @@ const getUserName = (user) =>
           const errorData =
             responseText
               ? JSON.parse(
-                  responseText
-                )
+                responseText
+              )
               : {}
 
           message =
@@ -783,12 +912,13 @@ const getUserName = (user) =>
       setSelectedLeadIds([])
 
       await fetchLeads()
+      await fetchStatusCounts()
 
       return true
     } catch (err) {
       toast.error(
         err?.message ||
-          'Failed to assign leads.'
+        'Failed to assign leads.'
       )
 
       throw err
@@ -898,9 +1028,9 @@ const getUserName = (user) =>
     totalLeads === 0
       ? ''
       : `${(page - 1) * PAGE_SIZE + 1}-${Math.min(
-          page * PAGE_SIZE,
-          totalLeads
-        )} of ${totalLeads}`
+        page * PAGE_SIZE,
+        totalLeads
+      )} of ${totalLeads}`
   return (
     <div className="min-w-0 space-y-5">
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1025,159 +1155,166 @@ const getUserName = (user) =>
 
       {!loading &&
         !error && (
-          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex max-w-full flex-wrap items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1">
-              {STATUS_TABS.map(
-                ({
-                  value,
-                  label,
-                }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter(
-                        value
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex items-center gap-3">
+                <p className="text-sm font-medium text-[var(--muted)]">
+                  Total {getStatusLabel(statusFilter)} Leads
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold tracking-tight text-[var(--text)]">
+                    {loading ? '...' : totalLeads}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+                <div className="relative min-w-0 flex-1 xl:flex-none">
+                  <UserRound
+                    size={17}
+                    className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]"
+                  />
+                  <select
+                    value={
+                      selectedTcId
+                    }
+                    onChange={(
+                      event
+                    ) => {
+                      setSelectedTcId(
+                        event.target
+                          .value
                       )
 
                       resetToFirstPage()
                     }}
-                    className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all sm:px-4 ${
-                      statusFilter ===
-                      value
+                    disabled={
+                      telecallersLoading
+                    }
+                    className="h-11 w-full min-w-0 appearance-none rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60 xl:min-w-[190px]"
+                  >
+                    <option value="">
+                      {telecallersLoading
+                        ? 'Loading TC...'
+                        : 'All Telecallers'}
+                    </option>
+
+                    {telecallers.map(
+                      (
+                        telecaller
+                      ) => {
+                        const userId =
+                          getUserId(
+                            telecaller
+                          )
+
+                        return userId ? (
+                          <option
+                            key={
+                              userId
+                            }
+                            value={
+                              userId
+                            }
+                          >
+                            {getUserName(
+                              telecaller
+                            )}
+                          </option>
+                        ) : null
+                      }
+                    )}
+                  </select>
+
+                  <ChevronDown
+                    size={16}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+                  />
+                </div>
+
+                {/* CLEAR TC */}
+                {selectedTcId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTcId(
+                        ''
+                      )
+
+                      resetToFirstPage()
+                    }}
+                    title="Clear telecaller filter"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition-all hover:bg-[var(--surface-alt)] hover:text-[var(--text)]"
+                  >
+                    <RotateCcw
+                      size={16}
+                    />
+                  </button>
+                )}
+
+                {/* ASSIGN */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setIsAssignModalOpen(
+                      true
+                    )
+                  }
+                  disabled={
+                    isAssigning
+                  }
+                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                >
+                  {isAssigning ? (
+                    <Loader2
+                      size={17}
+                      className="animate-spin"
+                    />
+                  ) : (
+                    <UserPlus
+                      size={17}
+                    />
+                  )}
+
+                  <span>
+                    {isAssigning
+                      ? 'Assigning...'
+                      : 'Assign'}
+                  </span>
+
+                  {selectedLeadCount >
+                    0 && (
+                      <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+                        {
+                          selectedLeadCount
+                        }
+                      </span>
+                    )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1">
+              {STATUS_TABS.map(({ value, label }) => {
+                const isActive = statusFilter === value
+
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter(value)
+                      resetToFirstPage()
+                    }}
+                    className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${isActive
                         ? 'bg-[var(--primary)] text-white shadow-sm'
                         : 'text-[var(--muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)]'
-                    }`}
+                      }`}
                   >
                     {label}
                   </button>
                 )
-              )}
-            </div>
-
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
-              <div className="relative min-w-0 flex-1 lg:flex-none">
-                <UserRound
-                  size={17}
-                  className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]"
-                />
-                <select
-                  value={
-                    selectedTcId
-                  }
-                  onChange={(
-                    event
-                  ) => {
-                    setSelectedTcId(
-                      event.target
-                        .value
-                    )
-
-                    resetToFirstPage()
-                  }}
-                  disabled={
-                    telecallersLoading
-                  }
-                  className="h-11 w-full min-w-0 appearance-none rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60 lg:min-w-[190px]"
-                >
-                  <option value="">
-                    {telecallersLoading
-                      ? 'Loading TC...'
-                      : 'All Telecallers'}
-                  </option>
-
-                  {telecallers.map(
-                    (
-                      telecaller
-                    ) => {
-                      const userId =
-                        getUserId(
-                          telecaller
-                        )
-
-                      return userId ? (
-                        <option
-                          key={
-                            userId
-                          }
-                          value={
-                            userId
-                          }
-                        >
-                          {getUserName(
-                            telecaller
-                          )}
-                        </option>
-                      ) : null
-                    }
-                  )}
-                </select>
-
-                <ChevronDown
-                  size={16}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-                />
-              </div>
-
-              {/* CLEAR TC */}
-              {selectedTcId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedTcId(
-                      ''
-                    )
-
-                    resetToFirstPage()
-                  }}
-                  title="Clear telecaller filter"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition-all hover:bg-[var(--surface-alt)] hover:text-[var(--text)]"
-                >
-                  <RotateCcw
-                    size={16}
-                  />
-                </button>
-              )}
-
-              {/* ASSIGN */}
-              <button
-                type="button"
-                onClick={() =>
-                  setIsAssignModalOpen(
-                    true
-                  )
-                }
-                disabled={
-                  isAssigning
-                }
-                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
-              >
-                {isAssigning ? (
-                  <Loader2
-                    size={17}
-                    className="animate-spin"
-                  />
-                ) : (
-                  <UserPlus
-                    size={17}
-                  />
-                )}
-
-                <span>
-                  {isAssigning
-                    ? 'Assigning...'
-                    : 'Assign'}
-                </span>
-
-                {selectedLeadCount >
-                  0 && (
-                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-                    {
-                      selectedLeadCount
-                    }
-                  </span>
-                )}
-              </button>
+              })}
             </div>
           </div>
         )}
@@ -1211,284 +1348,283 @@ const getUserName = (user) =>
         )}
 
       {!error && (
-          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
-            <div className={`max-w-full overflow-x-auto overscroll-x-contain lead-table-scroll ${loading ? 'lead-table-loading' : ''}`}>
-              <table className="lead-table w-full min-w-0 border-collapse text-left text-sm md:min-w-[1150px]">
-                <thead>
-                  <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
-                    <th className="px-4 py-4">
-                      <label className="flex items-center justify-center">
-                        <input
-                          type="checkbox"
-                          checked={
-                            allLeadsSelected
-                          }
-                          onChange={
-                            toggleSelectAllRows
-                          }
-                          className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
-                        />
-                      </label>
-                    </th>
-                    <th className="px-4 py-4 font-semibold text-[var(--muted)]">
-                      Date
-                    </th>
-                    <th className="px-6 py-4 font-semibold text-[var(--muted)]">
-                      Name
-                    </th>
-                    <th className="px-6 py-4 font-semibold text-[var(--muted)]">
-                      Mobile No
-                    </th>
-                    <th className="px-6 py-4 font-semibold text-[var(--muted)]">
-                      Pin code
-                    </th>
-                    <th className="px-6 py-4 font-semibold text-[var(--muted)]">
-                      Address
-                    </th>
-                    <th className="px-6 py-4 font-semibold text-[var(--muted)]">
-                      TC Name
-                    </th>
-                    <th className="px-6 py-4 font-semibold text-[var(--muted)]">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 font-semibold text-[var(--muted)]">
-                      Last Activity
-                    </th>
-                    <th className="px-6 py-4 font-semibold text-[var(--muted)]">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {loading ? (
-                    Array.from({ length: 6 }).map((_, index) => (
-                      <tr key={`loading-${index}`} className="animate-pulse">
-                        <td className="px-4 py-4"><span className="lead-skeleton block h-4 w-4 rounded" /></td>
-                        <td className="px-4 py-4"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
-                        <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-28 rounded" /></td>
-                        <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
-                        <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-12 rounded" /></td>
-                        <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
-                        <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
-                        <td className="px-6 py-4"><span className="lead-skeleton block h-6 w-20 rounded-full" /></td>
-                        <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-32 rounded" /></td>
-                        <td className="px-6 py-4"><span className="lead-skeleton block h-7 w-14 rounded-lg" /></td>
-                      </tr>
-                    ))
-                  ) : leads.length === 0 ? (
-                    <tr className="lead-empty-row">
-                      <td colSpan="10" className="px-6 py-16 text-center">
-                        <div className="flex flex-col items-center justify-center">
-                          <Search
-                            size={24}
-                            strokeWidth={1.8}
-                            className="mb-3 text-[var(--muted)]"
-                          />
-                          <span className="text-sm font-semibold text-[var(--text)]">
-                            Data is not available
-                          </span>
-                          <span className="mt-1 text-xs text-[var(--muted)]">
-                            No leads match the selected filters.
-                          </span>
-                        </div>
-                      </td>
+        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+          <div className={`max-w-full overflow-x-auto overscroll-x-contain lead-table-scroll ${loading ? 'lead-table-loading' : ''}`}>
+            <table className="lead-table w-full min-w-0 border-collapse text-left text-sm md:min-w-[1150px]">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
+                  <th className="px-4 py-4">
+                    <label className="flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          allLeadsSelected
+                        }
+                        onChange={
+                          toggleSelectAllRows
+                        }
+                        className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
+                      />
+                    </label>
+                  </th>
+                  <th className="px-4 py-4 font-semibold text-[var(--muted)]">
+                    Date
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                    Name
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                    Mobile No
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                    Pin code
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                    Address
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                    TC Name
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                    Last Activity
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, index) => (
+                    <tr key={`loading-${index}`} className="animate-pulse">
+                      <td className="px-4 py-4"><span className="lead-skeleton block h-4 w-4 rounded" /></td>
+                      <td className="px-4 py-4"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
+                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-28 rounded" /></td>
+                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
+                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-12 rounded" /></td>
+                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
+                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
+                      <td className="px-6 py-4"><span className="lead-skeleton block h-6 w-20 rounded-full" /></td>
+                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-32 rounded" /></td>
+                      <td className="px-6 py-4"><span className="lead-skeleton block h-7 w-14 rounded-lg" /></td>
                     </tr>
-                  ) : leads.map(
-                    (row) => {
-                      const leadId =
-                        row._id ||
-                        row.id
+                  ))
+                ) : leads.length === 0 ? (
+                  <tr className="lead-empty-row">
+                    <td colSpan="10" className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <Search
+                          size={24}
+                          strokeWidth={1.8}
+                          className="mb-3 text-[var(--muted)]"
+                        />
+                        <span className="text-sm font-semibold text-[var(--text)]">
+                          Data is not available
+                        </span>
+                        <span className="mt-1 text-xs text-[var(--muted)]">
+                          No leads match the selected filters.
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : leads.map(
+                  (row) => {
+                    const leadId =
+                      row._id ||
+                      row.id
 
-                      const isSelected =
-                        !!leadId &&
-                        selectedLeadIds.includes(
-                          leadId
-                        )
-
-                      return (
-                        <tr
-                          key={
-                            leadId ||
-                            `${row.mobile}-${row.createdAt}`
-                          }
-                          className={`transition-colors hover:bg-[var(--surface-alt)] ${
-                            isSelected
-                              ? 'bg-[var(--primary)]/5'
-                              : ''
-                          }`}
-                        >
-                          <td data-label="Select" className="px-4 py-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={
-                                isSelected
-                              }
-                              onChange={() =>
-                                toggleLeadSelection(
-                                  leadId
-                                )
-                              }
-                              disabled={
-                                !leadId
-                              }
-                              className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
-                            />
-                          </td>
-                          <td data-label="Date" className="whitespace-nowrap px-4 py-4 text-[var(--muted)]">
-                            {formatDate(
-                              row.createdAt
-                            )}
-                          </td>
-                          <td data-label="Name" className="px-6 py-4">
-                            <span className="font-semibold text-[var(--text)]">
-                              {row.name ||
-                                'N/A'}
-                            </span>
-                          </td>
-                          <td data-label="Mobile No" className="px-6 py-4 text-[var(--muted)]">
-                            {row.mobile ||
-                              'N/A'}
-                          </td>
-                          <td data-label="Pin code" className="px-6 py-4 text-[var(--muted)]">
-                            {row.pincode ||
-                              'N/A'}
-                          </td>
-                          <td
-                            data-label="Address"
-                            className="max-w-xs truncate px-6 py-4 text-[var(--muted)]"
-                            title={
-                              row.address ||
-                              ''
-                            }
-                          >
-                            {row.address ||
-                              'N/A'}
-                          </td>
-                          <td data-label="TC Name" className="px-6 py-4">
-                            {row.assignedTo
-                              ?.name ? (
-                              <div className="inline-flex items-center gap-2">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)]/10">
-                                  <UserRound
-                                    size={
-                                      14
-                                    }
-                                    className="text-[var(--primary)]"
-                                  />
-                                </div>
-                                <span className="font-medium text-[var(--text)]">
-                                  {
-                                    row
-                                      .assignedTo
-                                      .name
-                                  }
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-[var(--muted)]">
-                                N/A
-                              </span>
-                            )}
-                          </td>
-                          <td data-label="Status" className="px-6 py-4">
-                            <span
-                              className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                                row.status
-                              )}`}
-                            >
-                              {getStatusLabel(
-                                row.status
-                              )}
-                            </span>
-                          </td>
-                          <td data-label="Last Activity" className="whitespace-nowrap px-6 py-4 text-[var(--muted)]">
-                            {formatDateTime(
-                              row.activityAt ||
-                                row.lastActivityAt ||
-                                row.assignedAt ||
-                                row.updatedAt ||
-                                row.createdAt
-                            )}
-                          </td>
-                          <td data-label="Action" className="px-6 py-4">
-                            <button
-                              type="button"
-                              disabled
-                              className="cursor-not-allowed rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white opacity-60 shadow-sm"
-                            >
-                              Update
-                            </button>
-                          </td>
-                        </tr>
+                    const isSelected =
+                      !!leadId &&
+                      selectedLeadIds.includes(
+                        leadId
                       )
-                    }
-                  )}
 
-                </tbody>
-              </table>
-            </div>
+                    return (
+                      <tr
+                        key={
+                          leadId ||
+                          `${row.mobile}-${row.createdAt}`
+                        }
+                        className={`transition-colors hover:bg-[var(--surface-alt)] ${isSelected
+                            ? 'bg-[var(--primary)]/5'
+                            : ''
+                          }`}
+                      >
+                        <td data-label="Select" className="px-4 py-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={
+                              isSelected
+                            }
+                            onChange={() =>
+                              toggleLeadSelection(
+                                leadId
+                              )
+                            }
+                            disabled={
+                              !leadId
+                            }
+                            className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
+                          />
+                        </td>
+                        <td data-label="Date" className="whitespace-nowrap px-4 py-4 text-[var(--muted)]">
+                          {formatDate(
+                            row.createdAt
+                          )}
+                        </td>
+                        <td data-label="Name" className="px-6 py-4">
+                          <span className="font-semibold text-[var(--text)]">
+                            {row.name ||
+                              'N/A'}
+                          </span>
+                        </td>
+                        <td data-label="Mobile No" className="px-6 py-4 text-[var(--muted)]">
+                          {row.mobile ||
+                            'N/A'}
+                        </td>
+                        <td data-label="Pin code" className="px-6 py-4 text-[var(--muted)]">
+                          {row.pincode ||
+                            'N/A'}
+                        </td>
+                        <td
+                          data-label="Address"
+                          className="max-w-xs truncate px-6 py-4 text-[var(--muted)]"
+                          title={
+                            row.address ||
+                            ''
+                          }
+                        >
+                          {row.address ||
+                            'N/A'}
+                        </td>
+                        <td data-label="TC Name" className="px-6 py-4">
+                          {row.assignedTo
+                            ?.name ? (
+                            <div className="inline-flex items-center gap-2">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)]/10">
+                                <UserRound
+                                  size={
+                                    14
+                                  }
+                                  className="text-[var(--primary)]"
+                                />
+                              </div>
+                              <span className="font-medium text-[var(--text)]">
+                                {
+                                  row
+                                    .assignedTo
+                                    .name
+                                }
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[var(--muted)]">
+                              N/A
+                            </span>
+                          )}
+                        </td>
+                        <td data-label="Status" className="px-6 py-4">
+                          <span
+                            className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                              row.status
+                            )}`}
+                          >
+                            {getStatusLabel(
+                              row.status
+                            )}
+                          </span>
+                        </td>
+                        <td data-label="Last Activity" className="whitespace-nowrap px-6 py-4 text-[var(--muted)]">
+                          {formatDateTime(
+                            row.activityAt ||
+                            row.lastActivityAt ||
+                            row.assignedAt ||
+                            row.updatedAt ||
+                            row.createdAt
+                          )}
+                        </td>
+                        <td data-label="Action" className="px-6 py-4">
+                          <button
+                            type="button"
+                            disabled
+                            className="cursor-not-allowed rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white opacity-60 shadow-sm"
+                          >
+                            Update
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  }
+                )}
 
-            <div className="flex flex-col gap-3 border-t border-[var(--border)] px-4 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
-              <span className="font-medium text-[var(--muted)]">
-                {displayedRange}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-[var(--border)] px-4 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <span className="font-medium text-[var(--muted)]">
+              {displayedRange}
+            </span>
+            <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  setPage(
+                    (current) =>
+                      Math.max(
+                        current -
+                        1,
+                        1
+                      )
+                  )
+                }
+                disabled={
+                  page === 1
+                }
+                aria-label="Previous page"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft
+                  size={17}
+                />
+              </button>
+              <span className="min-w-24 text-center text-sm font-semibold text-[var(--text)]">
+                Page {page} of{' '}
+                {
+                  totalPages
+                }
               </span>
-              <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPage(
-                      (current) =>
-                        Math.max(
-                          current -
-                            1,
-                          1
-                        )
-                    )
-                  }
-                  disabled={
-                    page === 1
-                  }
-                  aria-label="Previous page"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ChevronLeft
-                    size={17}
-                  />
-                </button>
-                <span className="min-w-24 text-center text-sm font-semibold text-[var(--text)]">
-                  Page {page} of{' '}
-                  {
-                    totalPages
-                  }
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPage(
-                      (current) =>
-                        Math.min(
-                          current +
-                            1,
-                          totalPages
-                        )
-                    )
-                  }
-                  disabled={
-                    page >=
-                    totalPages
-                  }
-                  aria-label="Next page"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ChevronRight
-                    size={17}
-                  />
-                </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setPage(
+                    (current) =>
+                      Math.min(
+                        current +
+                        1,
+                        totalPages
+                      )
+                  )
+                }
+                disabled={
+                  page >=
+                  totalPages
+                }
+                aria-label="Next page"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronRight
+                  size={17}
+                />
+              </button>
 
-              </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
       <AssignModal
         open={
           isAssignModalOpen
