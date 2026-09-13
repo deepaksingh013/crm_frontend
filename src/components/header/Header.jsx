@@ -16,6 +16,7 @@ const Header = ({
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -97,47 +98,31 @@ const Header = ({
           </button>
 
           {/* Search */}
-          {/* <div className="hidden w-full max-w-[520px] sm:block">
-            <div className="header-search flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 transition focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/5">
+          <div className="w-full max-w-[520px]">
+            <label className="header-search flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition focus-within:border-blue-300 focus-within:bg-white sm:px-4">
               <Search
                 size={18}
                 className="shrink-0 text-slate-400"
               />
 
               <input
-                className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                className="w-full appearance-none border-0 bg-transparent text-sm text-slate-700 outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:outline-none focus:ring-0"
                 type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label="Search users, reports, and tasks"
                 placeholder="Search users, reports, tasks..."
               />
 
-              <div className="hidden items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 lg:flex">
+              <div className="hidden shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 lg:flex">
                 <span>⌘</span>
                 <span>K</span>
               </div>
-            </div>
-          </div> */}
-
-          {/* Mobile title */}
-          <div className="min-w-0 sm:hidden">
-            <div className="truncate text-sm font-bold text-slate-800">
-              ApnaIndia
-            </div>
-
-            <div className="text-[10px] text-slate-400">
-              Admin Panel
-            </div>
+            </label>
           </div>
+
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          {/* Mobile search */}
-          <button
-            type="button"
-            aria-label="Search"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 sm:hidden"
-          >
-            <Search size={18} />
-          </button>
-
           {/* Notifications */}
           {/* <button
             type="button"

@@ -160,11 +160,6 @@ const AssignModal = ({
   const hasSelectedLeads =
     Array.isArray(selectedLeadIds) && selectedLeadIds.length > 0
 
-  // ---------------------------------------------------------
-  // ASSIGN
-  // Frontend validation removed.
-  // Backend will validate everything.
-  // ---------------------------------------------------------
   const handleSubmit = async () => {
     setLocalError(null)
 
@@ -244,18 +239,6 @@ const AssignModal = ({
             ×
           </button>
         </div>
-
-        {/* Available Leads */}
-        <div className="mb-4 rounded-xl bg-[var(--surface-alt)] p-3">
-          <div className="text-xs text-[var(--muted)]">
-            {hasSelectedLeads ? 'Selected Leads' : 'Available Leads'}
-          </div>
-
-          <div className="mt-1 text-lg font-semibold text-[var(--text)]">
-            {hasSelectedLeads ? selectedLeadIds.length : leadsCount}
-          </div>
-        </div>
-
         {/* Number of leads */}
         {!hasSelectedLeads && (
           <div className="mb-4">
