@@ -2,26 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import LeadStatusUpdateModal from './LeadStatusUpdateModal';
 import {createSalesManagementRoute, DEFAULT_SALES_STATUS, normalizeSalesStatus, resolveSalesManagementTarget, SALES_STATUS_LABELS,} from './salesManagementRoutes';
 
 const API_URL ='https://crm-backend-5-iocr.onrender.com/api';
+const PAGE_SIZE = 10;
 
-const formatDate = (value) => {
-  if (!value) return 'N/A';
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return 'N/A';
-  }
-
-  return date.toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-};
 
 const formatDateTime = (value) => {
   if (!value) return 'N/A';
@@ -38,6 +25,29 @@ const formatDateTime = (value) => {
     minute: '2-digit',
   });
 };
+
+const getLeadActivityTimestamp = (lead) => {
+  const activityValue = [
+    'activityAt',
+    'lastActivityAt',
+    'statusUpdatedAt',
+    'assignedAt',
+    'updatedAt',
+    'createdAt',
+  ].find((key) => lead?.[key]);
+
+  if (!activityValue) return 0;
+
+  const timestamp = new Date(lead[activityValue]).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const sortLeadsByLatestActivity = (leadList) => (
+  [...leadList].sort(
+    (firstLead, secondLead) =>
+      getLeadActivityTimestamp(secondLead) - getLeadActivityTimestamp(firstLead)
+  )
+);
 
 const getStatusLabel = (status) => {
   const normalized = normalizeSalesStatus(status);
@@ -96,6 +106,9 @@ const SalesManagment = () => {
 
   const [campaigns, setCampaigns] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -228,30 +241,70 @@ const SalesManagment = () => {
 
     try {
       const apiStatus = getApiStatusParam(status);
-      const url = apiStatus
-        ? `${API_URL}/campaigns/${campaignId}/leads/my?status=${encodeURIComponent(apiStatus)}`
-        : `${API_URL}/campaigns/${campaignId}/leads/my`;
+      const params = { page, limit: PAGE_SIZE };
+      if (apiStatus) params.status = apiStatus;
 
-      const response = await axios.get(url, {
+      const response = await axios.get(`${API_URL}/campaigns/${campaignId}/leads/my`, {
+        params,
         headers: { Authorization: `Bearer ${token}` },
       });
 
       const responseData = response.data;
-      let leadList = [];
+      const pagination =
+        responseData?.pagination ||
+        responseData?.meta ||
+        responseData?.data?.pagination ||
+        responseData?.data?.meta ||
+        {};
+      let responseLeads = [];
 
       if (Array.isArray(responseData)) {
-        leadList = responseData;
+        responseLeads = responseData;
       } else if (Array.isArray(responseData?.leads)) {
-        leadList = responseData.leads;
+        responseLeads = responseData.leads;
       } else if (Array.isArray(responseData?.data)) {
-        leadList = responseData.data;
+        responseLeads = responseData.data;
       } else if (Array.isArray(responseData?.data?.leads)) {
-        leadList = responseData.data.leads;
+        responseLeads = responseData.data.leads;
       } else if (Array.isArray(responseData?.result)) {
-        leadList = responseData.result;
+        responseLeads = responseData.result;
       }
 
-      setLeads(leadList);
+      const responseTotal = Number(
+        responseData?.total ??
+        responseData?.data?.total ??
+        responseData?.totalCount ??
+        responseData?.data?.totalCount ??
+        pagination.total ??
+        pagination.totalItems ??
+        responseLeads.length
+      );
+      const hasPaginationMetadata = Boolean(
+        responseData?.total !== undefined ||
+        responseData?.data?.total !== undefined ||
+        responseData?.totalCount !== undefined ||
+        pagination.total !== undefined ||
+        pagination.totalItems !== undefined ||
+        responseData?.totalPages !== undefined ||
+        pagination.totalPages !== undefined ||
+        pagination.pages !== undefined
+      );
+      const visibleLeads = hasPaginationMetadata
+        ? responseLeads
+        : responseLeads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+      const sortedLeads = sortLeadsByLatestActivity(visibleLeads);
+      const safeTotal = hasPaginationMetadata ? responseTotal : responseLeads.length;
+      const responsePages = Number(
+        responseData?.totalPages ??
+        responseData?.data?.totalPages ??
+        pagination.totalPages ??
+        pagination.pages ??
+        Math.max(Math.ceil(safeTotal / PAGE_SIZE), 1)
+      );
+
+      setLeads(sortedLeads);
+      setTotalLeads(safeTotal);
+      setTotalPages(Math.max(responsePages, 1));
     } catch (err) {
       const message =
         err.response?.data?.message ||
@@ -261,10 +314,12 @@ const SalesManagment = () => {
 
       setError(message);
       setLeads([]);
+      setTotalLeads(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [campaignId, status]);
+  }, [campaignId, page, status]);
 
   useEffect(() => {
     if (showCampaignPicker) {
@@ -277,6 +332,8 @@ const SalesManagment = () => {
 
     if (!campaignId) {
       setLeads([]);
+      setTotalLeads(0);
+      setTotalPages(1);
       setLoading(false);
       return;
     }
@@ -284,6 +341,12 @@ const SalesManagment = () => {
     fetchCampaigns();
     fetchLeads();
   }, [campaignId, fetchCampaigns, fetchLeads, showCampaignPicker]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const selectedCampaign = useMemo(() => {
     if (!campaignId || campaigns.length === 0) {
@@ -310,6 +373,14 @@ const SalesManagment = () => {
     setSelectedLead(null);
   };
 
+  const displayedRange = totalLeads === 0
+    ? 'No leads found'
+    : `${(page - 1) * PAGE_SIZE + 1}-${Math.min(page * PAGE_SIZE, totalLeads)} of ${totalLeads}`;
+
+  const goToPage = (nextPage) => {
+    setPage(Math.min(Math.max(nextPage, 1), totalPages));
+  };
+
   const openCampaign = (campaign) => {
     const campaignIdFromItem =
       campaign?.id ?? campaign?._id ?? campaign?.campaignId ?? campaign?.campaign_id;
@@ -319,6 +390,7 @@ const SalesManagment = () => {
       return;
     }
 
+    setPage(1);
     navigate(createSalesManagementRoute(campaignIdFromItem, DEFAULT_SALES_STATUS));
   };
 
@@ -440,7 +512,7 @@ const SalesManagment = () => {
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Lead Details</h2>
-              <p className="mt-0.5 text-xs text-slate-500">{leads.length} lead{leads.length === 1 ? '' : 's'} in this view</p>
+                <p className="mt-0.5 text-xs text-slate-500">{displayedRange}</p>
             </div>
 
             <div className="flex max-w-full gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:justify-end sm:overflow-visible sm:pb-0">
@@ -451,7 +523,10 @@ const SalesManagment = () => {
                   <button
                     key={statusKey}
                     type="button"
-                    onClick={() => navigate(createSalesManagementRoute(campaignId, statusKey))}
+                    onClick={() => {
+                      setPage(1);
+                      navigate(createSalesManagementRoute(campaignId, statusKey));
+                    }}
                     className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-sm'
@@ -503,24 +578,22 @@ const SalesManagment = () => {
                       <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Phone</th>
                       <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Pincode</th>
                       <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Status</th>
-                      <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Last activity</th>
                       <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold">Action</th>
                     </tr>
-                  </thead>
+                  </thead>  
 
                   <tbody>
                     {leads.map((lead, index) => {
+                      const activityDate = getLeadValue(lead, ['activityAt', 'lastActivityAt', 'statusUpdatedAt', 'assignedAt', 'updatedAt', 'createdAt'], '');
                       const leadStatus = getLeadValue(lead, ['status', 'leadStatus', 'state', 'lead_state'], 'pending');
                       const leadName = getLeadValue(lead, ['name', 'fullName', 'customerName', 'leadName']);
                       const leadPhone = getLeadValue(lead, ['phone', 'mobile', 'phoneNumber', 'contact']);
                       const leadPincode = getLeadValue(lead, ['pincode', 'pinCode', 'postalCode', 'zipCode']);
-                      const leadDate = getLeadValue(lead, ['createdAt', 'created_at', 'updatedAt', 'date', 'leadDate'], '');
-                      const activityDate = getLeadValue(lead, ['activityAt', 'lastActivityAt', 'statusUpdatedAt', 'assignedAt', 'updatedAt', 'createdAt'], '');
                       const leadId = lead._id || lead.id || index;
 
                       return (
                         <tr key={leadId} className="border-b border-gray-100 transition last:border-b-0 hover:bg-slate-50">
-                          <td data-label="Date" className="whitespace-nowrap px-3 py-3 text-gray-600">{formatDate(leadDate)}</td>
+                          <td data-label="Last activity" className="whitespace-nowrap px-3 py-3 text-gray-600">{formatDateTime(activityDate)}</td>
                           <td data-label="Name" className="whitespace-nowrap px-3 py-3">
                             <div className="flex items-center gap-2.5">
                               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-xs font-bold text-red-600">
@@ -541,7 +614,6 @@ const SalesManagment = () => {
                               {getStatusLabel(leadStatus)}
                             </span>
                           </td>
-                          <td data-label="Last activity" className="whitespace-nowrap px-3 py-3 text-gray-600">{formatDateTime(activityDate)}</td>
                           <td data-label="Action" className="whitespace-nowrap px-3 py-3 text-right">
                             <button
                               type="button"
@@ -556,6 +628,35 @@ const SalesManagment = () => {
                     })}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {!loading && !error && totalLeads > 0 && (
+            <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500">Page {page} of {totalPages}</p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page === 1}
+                  aria-label="Previous page"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={17} />
+                </button>
+                <span className="min-w-20 text-center text-sm font-semibold text-slate-700" aria-live="polite">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => goToPage(page + 1)}
+                  disabled={page === totalPages}
+                  aria-label="Next page"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronRight size={17} />
+                </button>
               </div>
             </div>
           )}
