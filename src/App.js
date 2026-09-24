@@ -24,10 +24,6 @@ import SalesManagment from './pages/telecaller/salesManagment/SalesManagment'
 import TcList from './pages/admin/telecallerList/TcList'
 import TcDetails from './pages/admin/telecallerList/TcDetails'
 import DeviceManagment from './pages/admin/deviceManagment/DeviceManagment'
-import TrialExpiredModal from './components/TrialExpiredModal'
-
-// Set to false once the client's subscription payment is received
-const TRIAL_EXPIRED = true
 
 const MainLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -64,11 +60,7 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div
-        className={`min-h-screen w-full bg-[var(--bg)] ${TRIAL_EXPIRED ? 'pointer-events-none select-none blur-[6px]' : ''}`}
-        inert={TRIAL_EXPIRED}
-        aria-hidden={TRIAL_EXPIRED}
-      >
+      <div className="min-h-screen w-full bg-[var(--bg)]">
         <Routes>
           <Route
             path="/login"
@@ -211,7 +203,6 @@ function App() {
           />
         </Routes>
       </div>
-      {TRIAL_EXPIRED && <TrialExpiredModal />}
     </BrowserRouter >
   )
 }
