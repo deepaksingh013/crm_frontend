@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "https://crm-backend-5-iocr.onrender.com";
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -30,7 +30,7 @@ apiClient.interceptors.request.use(
 const authApi = {
   login: async (email, password) => {
     try {
-      const response = await apiClient.post("/api/auth/login", {
+      const response = await apiClient.post("/auth/login", {
         email,
         password,
       });
@@ -42,7 +42,7 @@ const authApi = {
 
   getProfile: async () => {
     try {
-      const response = await apiClient.get("/api/auth/profile");
+      const response = await apiClient.get("/auth/profile");
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -51,7 +51,7 @@ const authApi = {
 
   logout: async () => {
     try {
-      const response = await apiClient.post("/api/auth/logout");
+      const response = await apiClient.post("/auth/logout");
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -61,7 +61,7 @@ const authApi = {
   // Refresh token
   refreshToken: async () => {
     try {
-      const response = await apiClient.post("/api/auth/refresh");
+      const response = await apiClient.post("/auth/refresh");
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

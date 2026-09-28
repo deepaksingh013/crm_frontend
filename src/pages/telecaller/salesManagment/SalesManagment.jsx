@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import LeadStatusUpdateModal from './LeadStatusUpdateModal';
 import {createSalesManagementRoute, DEFAULT_SALES_STATUS, normalizeSalesStatus, resolveSalesManagementTarget, SALES_STATUS_LABELS,} from './salesManagementRoutes';
 
-const API_URL ='https://crm-backend-5-iocr.onrender.com/api';
+const API_URL =process.env.REACT_APP_API_URL;
 const PAGE_SIZE = 10;
 
 

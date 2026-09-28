@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 import ConfirmationModal from './ConfirmationModal'
 import ImportCampaignModal from '../leadManagment/ImportCampaignModal'
 
-const API_URL = 'https://crm-backend-5-iocr.onrender.com/api'
+const API_URL = process.env.REACT_APP_API_URL
 
 const statusStyles = {
   Live: 'bg-emerald-500 text-white',

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { AlertCircle, Check, } from 'lucide-react'
 import DynamicTable from '../../../components/table/DynamicTable'
 import ConfirmationModal from './ConfirmationModal'
-const API_URL = 'https://crm-backend-5-iocr.onrender.com/api'
+const API_URL = process.env.REACT_APP_API_URL
 
 const roleMap = {
     Manager: 'manager',

@@ -6,7 +6,7 @@ import AssignModal from './AssignModal'
 import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
 
-const API_BASE_URL = 'https://crm-backend-5-iocr.onrender.com/api'
+const API_BASE_URL = process.env.REACT_APP_API_URL
 const PAGE_SIZE = 10
 
 const formatDate = (dateString) => {
