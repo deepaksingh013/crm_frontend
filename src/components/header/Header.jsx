@@ -17,6 +17,19 @@ const Header = ({
   const [loading, setLoading] = useState(true)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchError, setSearchError] = useState('')
+
+  const handleLeadSearch = () => {
+    const number = searchQuery.replace(/\D/g, '')
+
+    if (number.length < 7 || number.length > 15) {
+      setSearchError('Enter a phone number with 7 to 15 digits.')
+      return
+    }
+
+    setSearchError('')
+    navigate(`/lead-search?number=${encodeURIComponent(number)}`)
+  }
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -98,8 +111,8 @@ const Header = ({
           </button>
 
           {/* Search */}
-          <div className="w-full max-w-[520px]">
-            <label className="header-search flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition focus-within:border-blue-300 focus-within:bg-white sm:px-4">
+          <div className="relative w-full max-w-[520px]">
+            <div role="search" className="header-search flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition focus-within:border-blue-300 focus-within:bg-white sm:px-4">
               <Search
                 size={18}
                 className="shrink-0 text-slate-400"
@@ -107,18 +120,40 @@ const Header = ({
 
               <input
                 className="w-full appearance-none border-0 bg-transparent text-sm text-slate-700 outline-none ring-0 placeholder:text-slate-400 focus:border-0 focus:outline-none focus:ring-0"
-                type="search"
+                type="tel"
+                inputMode="tel"
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                aria-label="Search users, reports, and tasks"
-                placeholder="Search users, reports, tasks..."
+                onChange={(event) => {
+                  setSearchQuery(event.target.value)
+                  setSearchError('')
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    handleLeadSearch()
+                  }
+                }}
+                aria-label="Search leads by mobile number"
+                aria-invalid={Boolean(searchError)}
+                aria-describedby={searchError ? 'lead-search-error' : undefined}
+                placeholder="Search leads by mobile number..."
               />
 
-              <div className="hidden shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 lg:flex">
-                <span>⌘</span>
-                <span>K</span>
-              </div>
-            </label>
+              <button
+                type="button"
+                onClick={handleLeadSearch}
+                aria-label="Search leads"
+                title="Search leads"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <Search size={17} />
+              </button>
+            </div>
+            {searchError && (
+              <p id="lead-search-error" role="alert" className="absolute left-0 top-full z-30 mt-1 rounded-md bg-white px-2 py-1 text-xs text-red-600 shadow">
+                {searchError}
+              </p>
+            )}
           </div>
 
         </div>
