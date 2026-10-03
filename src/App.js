@@ -15,6 +15,7 @@ import UserManagement from './pages/admin/userManagment/UserManagement'
 import CampaignManagment from './pages/admin/campaignManagment/CampaignManagment'
 import LeadDetails from './pages/admin/leadManagment/LeadDetails'
 import Leadmanagment from './pages/admin/leadManagment/Leadmanagment'
+import GlobalLeadSearch from './pages/admin/leadManagment/GlobalLeadSearch'
 import Report from './pages/admin/reports/Report'
 
 import { setUserFromCookies } from './features/auth/authSlice'
@@ -109,6 +110,14 @@ function App() {
             element={
               <MainLayout>
                 <Leadmanagment />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/lead-search"
+            element={
+              <MainLayout>
+                <GlobalLeadSearch />
               </MainLayout>
             }
           />

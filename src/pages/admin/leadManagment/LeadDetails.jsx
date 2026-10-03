@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { Search, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Upload, Loader2, UserRound, UserPlus, RotateCcw, } from 'lucide-react'
+import { Search, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Upload, Loader2, UserRound, UserPlus, RotateCcw, ArrowRightLeft } from 'lucide-react'
 import ImportCampaignModal from './ImportCampaignModal'
 import AssignModal from './AssignModal'
+import Modal from '../../../components/modal/Modal'
+import { useDispatch } from 'react-redux'
+import { apiGet, apiPost } from '../../../redux/apiMethods'
 import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
 
-const API_BASE_URL = 'https://crm-backend-5-iocr.onrender.com/api'
+const API_BASE_URL = process.env.REACT_APP_API_URL
 const PAGE_SIZE = 10
 
 const formatDate = (dateString) => {
@@ -129,6 +132,30 @@ const getStatusClass = (status) => {
   )
 }
 
+const getPaginationItems = (currentPage, pageCount) => {
+  const total = Math.max(Number(pageCount) || 1, 1)
+  let pages
+
+  if (total <= 10) {
+    pages = Array.from({ length: total }, (_, index) => index + 1)
+  } else if (currentPage <= 6) {
+    pages = [...Array.from({ length: 9 }, (_, index) => index + 1), total]
+  } else if (currentPage >= total - 5) {
+    pages = [1, ...Array.from({ length: 9 }, (_, index) => total - 8 + index)]
+  } else {
+    pages = [1, ...Array.from({ length: 7 }, (_, index) => currentPage - 3 + index), total]
+  }
+
+  return pages.reduce((items, pageNumber, index) => {
+    if (index > 0 && pageNumber - pages[index - 1] > 1) {
+      items.push({ type: 'ellipsis', key: `ellipsis-${pages[index - 1]}-${pageNumber}` })
+    }
+
+    items.push({ type: 'page', value: pageNumber, key: `page-${pageNumber}` })
+    return items
+  }, [])
+}
+
 const isTelecaller = (user) => {
   const role = String(
     user?.role ||
@@ -168,6 +195,7 @@ const getUserName = (user) =>
   'Unnamed telecaller'
 
 const LeadDetails = () => {
+  const dispatch = useDispatch()
   const { id: campaignId } = useParams()
   const location = useLocation()
 
@@ -213,18 +241,6 @@ const LeadDetails = () => {
   const [totalLeads, setTotalLeads] =
     useState(0)
 
-  const [, setStatusCounts] = useState({
-    Pending: 0,
-    'Not Connected': 0,
-    Complete: 0,
-    Reject: 0,
-    Holding: 0,
-    New: 0,
-  })
-
-  const [, setStatusCountsLoading] =
-    useState(false)
-
   const [page, setPage] =
     useState(1)
 
@@ -244,6 +260,15 @@ const LeadDetails = () => {
 
   const [isAssigning, setIsAssigning] =
     useState(false)
+
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
+  const [targetCampaignId, setTargetCampaignId] = useState('')
+  const [transferCount, setTransferCount] = useState('1')
+  const [campaignOptions, setCampaignOptions] = useState([])
+  const [campaignsLoading, setCampaignsLoading] = useState(false)
+  const [isTransferring, setIsTransferring] = useState(false)
+
+  const transferMode = selectedLeadIds.length > 0 ? 'selected' : 'count'
 
   useEffect(() => {
     const fetchTelecallers = async () => {
@@ -303,123 +328,38 @@ const LeadDetails = () => {
     fetchTelecallers()
   }, [])
 
-  // Fetch total lead count for every status.
-  // Uses limit=1 because we only need the API's total count.
-  const fetchStatusCounts = useCallback(async () => {
-    if (!campaignId) return
+  useEffect(() => {
+    if (!isTransferModalOpen || campaignOptions.length > 0) return undefined
 
-    const token = Cookies.get('token')
+    let active = true
+    setCampaignsLoading(true)
 
-    if (!token) return
-
-    setStatusCountsLoading(true)
-
-    try {
-      const countResults = await Promise.all(
-        STATUS_TABS.map(async ({ value }) => {
-          const params = new URLSearchParams()
-
-          params.append('page', '1')
-          params.append('limit', '1')
-          params.append('status', value)
-
-          if (selectedTcId) {
-            params.append('assignedTo', selectedTcId)
-          }
-
-          const response = await fetch(
-            `${API_BASE_URL}/campaigns/${campaignId}/leads?${params.toString()}`,
-            {
-              method: 'GET',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-            }
-          )
-
-          const responseText = await response.text()
-
-          let data = {}
-
-          try {
-            data = responseText
-              ? JSON.parse(responseText)
-              : {}
-          } catch {
-            data = {}
-          }
-
-          if (!response.ok) {
-            throw new Error(
-              data?.message ||
-              data?.error ||
-              `Failed to fetch ${value} count`
-            )
-          }
-
-          const pagination =
-            data?.pagination ||
-            data?.meta ||
-            data?.data?.pagination ||
-            data?.data?.meta ||
-            {}
-
-          const leadsData = Array.isArray(data)
-            ? data
-            : Array.isArray(data?.leads)
-              ? data.leads
-              : Array.isArray(data?.data)
-                ? data.data
-                : Array.isArray(data?.data?.leads)
-                  ? data.data.leads
-                  : []
-
-          const total =
-            data?.total ??
-            data?.data?.total ??
-            data?.totalCount ??
-            data?.data?.totalCount ??
-            pagination.total ??
-            pagination.totalItems ??
-            leadsData.length
-
-          return {
-            status: value,
-            count: Number(total) || 0,
-          }
-        })
-      )
-
-      const newCounts = {
-        Pending: 0,
-        'Not Connected': 0,
-        Complete: 0,
-        Reject: 0,
-        Holding: 0,
-        New: 0,
-      }
-
-      countResults.forEach(({ status, count }) => {
-        newCounts[status] = count
+    dispatch(apiGet('/campaigns'))
+      .then((response) => {
+        const candidates = [
+          response?.campaigns,
+          response?.data?.campaigns,
+          response?.data,
+          response,
+        ]
+        const list = candidates.find(Array.isArray) || []
+        if (active) setCampaignOptions(list)
+      })
+      .catch((requestError) => {
+        if (active) {
+          toast.error(requestError.response?.data?.message || 'Failed to load campaigns.')
+        }
+      })
+      .finally(() => {
+        if (active) setCampaignsLoading(false)
       })
 
-      setStatusCounts(newCounts)
-    } catch (err) {
-      console.error(
-        'Failed to fetch status counts:',
-        err
-      )
-    } finally {
-      setStatusCountsLoading(false)
+    return () => {
+      active = false
     }
-  }, [campaignId, selectedTcId])
+  }, [campaignOptions.length, dispatch, isTransferModalOpen])
 
-  useEffect(() => {
-    fetchStatusCounts()
-  }, [fetchStatusCounts])
-
-  const fetchLeads = useCallback(async () => {
+  const fetchLeads = useCallback(async (signal) => {
     if (!campaignId) return
 
     setLoading(true)
@@ -472,6 +412,13 @@ const LeadDetails = () => {
         )
       }
 
+      if (fromDate || toDate) {
+        params.append(
+          'dateField',
+          'createdAt'
+        )
+      }
+
       if (fromDate) {
         params.append(
           'fromDate',
@@ -500,6 +447,7 @@ const LeadDetails = () => {
           'Content-Type':
             'application/json',
         },
+        signal,
       })
 
       const responseText =
@@ -617,12 +565,14 @@ const LeadDetails = () => {
         )
       )
     } catch (err) {
-      setError(
-        err?.message ||
-        'Something went wrong while fetching leads.'
-      )
+      if (err?.name !== 'AbortError') {
+        setError(
+          err?.message ||
+          'Something went wrong while fetching leads.'
+        )
+      }
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
   }, [
     campaignId,
@@ -636,15 +586,16 @@ const LeadDetails = () => {
 
 
   useEffect(() => {
+    const controller = new AbortController()
     const timer = setTimeout(
-      () => {
-        fetchLeads()
-      },
+      () => fetchLeads(controller.signal),
       filterQuery ? 500 : 0
     )
 
-    return () =>
+    return () => {
       clearTimeout(timer)
+      controller.abort()
+    }
   }, [
     fetchLeads,
     filterQuery,
@@ -663,6 +614,60 @@ const LeadDetails = () => {
     page,
     totalPages,
   ])
+
+  const handleTransferLeads = async (event) => {
+    event.preventDefault()
+
+    if (!targetCampaignId || targetCampaignId === campaignId) {
+      toast.error('Choose a different destination campaign.')
+      return
+    }
+
+    const payload = transferMode === 'selected'
+      ? { targetCampaignId, leadIds: selectedLeadIds }
+      : { targetCampaignId, count: Number(transferCount) }
+
+    if (transferMode === 'selected' && selectedLeadIds.length === 0) {
+      toast.error('Select at least one lead to transfer.')
+      return
+    }
+
+    if (transferMode === 'count' && (
+      !Number.isInteger(payload.count) ||
+      payload.count < 1 ||
+      payload.count > totalLeads
+    )) {
+      toast.error(`Enter a count between 1 and ${totalLeads}.`)
+      return
+    }
+
+    setIsTransferring(true)
+
+    try {
+      const endpoint = transferMode === 'selected'
+        ? `/campaigns/${campaignId}/leads/transfer`
+        : `/campaigns/${campaignId}/leads/transfer-by-count`
+      await dispatch(apiPost(endpoint, payload))
+
+      const transferredCount = transferMode === 'selected'
+        ? selectedLeadIds.length
+        : payload.count
+      const targetCampaign = campaignOptions.find((item) => (
+        String(item._id || item.id || item.campaignId) === String(targetCampaignId)
+      ))
+      const targetName = targetCampaign?.title || targetCampaign?.name || targetCampaign?.campaignName || 'the selected campaign'
+
+      setSelectedLeadIds([])
+      setIsTransferModalOpen(false)
+      setTransferCount('1')
+      toast.success(`${transferredCount} ${transferredCount === 1 ? 'lead' : 'leads'} transferred to ${targetName}.`)
+      await fetchLeads()
+    } catch (requestError) {
+      toast.error(requestError.response?.data?.message || requestError.message || 'Failed to transfer leads.')
+    } finally {
+      setIsTransferring(false)
+    }
+  }
 
 
   const resetToFirstPage = () => {
@@ -745,8 +750,6 @@ const LeadDetails = () => {
       }
 
       await fetchLeads()
-      await fetchStatusCounts()
-
       setIsImportModalOpen(false)
 
       toast.success(
@@ -912,8 +915,6 @@ const LeadDetails = () => {
       setSelectedLeadIds([])
 
       await fetchLeads()
-      await fetchStatusCounts()
-
       return true
     } catch (err) {
       toast.error(
@@ -1031,6 +1032,7 @@ const LeadDetails = () => {
         page * PAGE_SIZE,
         totalLeads
       )} of ${totalLeads}`
+  const paginationItems = getPaginationItems(page, totalPages)
   return (
     <div className="min-w-0 space-y-5">
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1055,43 +1057,23 @@ const LeadDetails = () => {
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
 
           {/* IMPORT */}
-          <button
-            type="button"
-            onClick={() =>
-              setIsImportModalOpen(
-                true
-              )
-            }
-            disabled={
-              isImporting
-            }
+          <button type="button" onClick={() => setIsImportModalOpen( true )}
+            disabled={ isImporting}
             className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-4"
           >
             {isImporting ? (
-              <Loader2
-                size={17}
-                className="animate-spin"
-              />
+              <Loader2 size={17} className="animate-spin" />
             ) : (
-              <Upload
-                size={17}
-              />
-            )}
+              <Upload size={17} />
+              )}
 
             {isImporting
               ? 'Importing...'
               : 'Import Leads'}
           </button>
 
-          {/* BACK */}
-          <Link
-            to="/leads"
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--text)] shadow-sm transition-all hover:bg-[var(--surface-alt)]"
-          >
-            <ArrowLeft
-              size={17}
-            />
-
+          <Link to="/leads" className="inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--text)] shadow-sm transition-all hover:bg-[var(--surface-alt)]">
+            <ArrowLeft size={17} />
             <span className="hidden sm:inline">
               Back
             </span>
@@ -1117,40 +1099,37 @@ const LeadDetails = () => {
               setFilterQuery(
                 e.target.value
               )
-
               resetToFirstPage()
             }}
             className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-10 pr-4 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
           />
         </div>
 
-        {/* FROM DATE */}
-        <input
-          type="date"
-          value={fromDate}
-          onChange={(e) => {
-            setFromDate(
-              e.target.value
-            )
+        <label className="block">
+          <input
+            type="date"
+            aria-label="Created from date"
+            value={fromDate}
+            onChange={(e) => {
+              setFromDate(e.target.value)
+              resetToFirstPage()
+            }}
+            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
+          />
+        </label>
 
-            resetToFirstPage()
-          }}
-          className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
-        />
-
-        {/* TO DATE */}
-        <input
-          type="date"
-          value={toDate}
-          onChange={(e) => {
-            setToDate(
-              e.target.value
-            )
-
-            resetToFirstPage()
-          }}
-          className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
-        />
+        <label className="block">
+          <input
+            type="date"
+            aria-label="Created to date"
+            value={toDate}
+            onChange={(e) => {
+              setToDate(e.target.value)
+              resetToFirstPage()
+            }}
+            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
+          />
+        </label>
       </div>
 
       {!loading &&
@@ -1252,6 +1231,25 @@ const LeadDetails = () => {
                   </button>
                 )}
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetCampaignId('')
+                    setTransferCount('1')
+                    setIsTransferModalOpen(true)
+                  }}
+                  disabled={isTransferring}
+                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:border-[var(--primary)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ArrowRightLeft size={17} />
+                  Transfer Leads
+                  {selectedLeadCount > 0 && (
+                    <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 text-xs text-[var(--primary)]">
+                      {selectedLeadCount}
+                    </span>
+                  )}
+                </button>
+
                 {/* ASSIGN */}
                 <button
                   type="button"
@@ -1333,9 +1331,7 @@ const LeadDetails = () => {
 
             <button
               type="button"
-              onClick={
-                fetchLeads
-              }
+              onClick={() => fetchLeads()}
               className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white"
             >
               <RotateCcw
@@ -1568,7 +1564,7 @@ const LeadDetails = () => {
             <span className="font-medium text-[var(--muted)]">
               {displayedRange}
             </span>
-            <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto sm:justify-end">
               <button
                 type="button"
                 onClick={() =>
@@ -1591,12 +1587,25 @@ const LeadDetails = () => {
                   size={17}
                 />
               </button>
-              <span className="min-w-24 text-center text-sm font-semibold text-[var(--text)]">
-                Page {page} of{' '}
-                {
-                  totalPages
-                }
-              </span>
+              {paginationItems.map((item) => item.type === 'ellipsis' ? (
+                <span key={item.key} aria-hidden="true" className="flex h-9 min-w-7 items-center justify-center text-sm text-[var(--muted)]">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setPage(item.value)}
+                  aria-label={`Page ${item.value}`}
+                  aria-current={page === item.value ? 'page' : undefined}
+                  className={`h-9 min-w-9 rounded-lg border px-2 text-sm font-semibold transition-colors ${page === item.value
+                    ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
+                    : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-alt)]'
+                    }`}
+                >
+                  {item.value}
+                </button>
+              ))}
               <button
                 type="button"
                 onClick={() =>
@@ -1650,6 +1659,112 @@ const LeadDetails = () => {
           selectedLeadIds
         }
       />
+
+      <Modal
+        open={isTransferModalOpen}
+        title="Transfer leads to another campaign"
+        size="md"
+        onClose={() => setIsTransferModalOpen(false)}
+        isLoading={isTransferring}
+      >
+        <form onSubmit={handleTransferLeads} className="space-y-5">
+          <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+            <p className="text-sm font-semibold text-blue-900">
+              {transferMode === 'selected' ? 'Transfer selected leads' : 'Transfer by count'}
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              {transferMode === 'selected'
+                ? `${selectedLeadIds.length} selected ${selectedLeadIds.length === 1 ? 'lead' : 'leads'} will be transferred.`
+                : `No leads are selected. Choose how many ${getStatusLabel(statusFilter).toLowerCase()} leads to transfer.`}
+            </p>
+          </div>
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-[var(--text)]">
+              Destination campaign
+            </span>
+            <select
+              value={targetCampaignId}
+              onChange={(event) => setTargetCampaignId(event.target.value)}
+              disabled={campaignsLoading || isTransferring}
+              required
+              className="h-11 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="">
+                {campaignsLoading ? 'Loading campaigns...' : 'Choose a campaign'}
+              </option>
+              {campaignOptions.map((item) => {
+                const optionId = item._id || item.id || item.campaignId
+                const optionName = item.title || item.name || item.campaignName || 'Untitled campaign'
+                if (!optionId || String(optionId) === String(campaignId)) return null
+
+                return (
+                  <option key={optionId} value={optionId}>
+                    {optionName}
+                  </option>
+                )
+              })}
+            </select>
+            {!campaignsLoading && campaignOptions.filter((item) => (
+              String(item._id || item.id || item.campaignId) !== String(campaignId)
+            )).length === 0 && (
+              <span className="mt-1 block text-xs text-amber-700">
+                No other campaigns are available.
+              </span>
+            )}
+          </label>
+
+          {transferMode === 'selected' ? (
+            <div className="flex items-start gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] p-3 text-sm text-[var(--text)]">
+              <UserPlus size={18} className="mt-0.5 shrink-0" />
+              <p>
+                {selectedLeadIds.length} selected {selectedLeadIds.length === 1 ? 'lead will' : 'leads will'} be moved from {getCampaignTitle(campaign)}.
+              </p>
+            </div>
+          ) : (
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-[var(--text)]">
+                Number of leads
+              </span>
+              <input
+                type="number"
+                min="1"
+                max={totalLeads}
+                step="1"
+                value={transferCount}
+                onChange={(event) => setTransferCount(event.target.value)}
+                disabled={isTransferring}
+                required
+                className="h-11 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:opacity-60"
+              />
+              <span className="mt-1 block text-xs text-[var(--muted)]">
+                Up to {totalLeads} leads are available in the {getStatusLabel(statusFilter).toLowerCase()} tab.
+              </span>
+            </label>
+          )}
+
+          <div className="flex justify-end gap-2 border-t border-[var(--border)] pt-4">
+            <button
+              type="button"
+              onClick={() => setIsTransferModalOpen(false)}
+              disabled={isTransferring}
+              className="h-10 rounded-lg border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-alt)] disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isTransferring || campaignsLoading || !targetCampaignId || (
+                transferMode === 'selected' ? selectedLeadIds.length === 0 : totalLeads === 0
+              )}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isTransferring ? <Loader2 size={16} className="animate-spin" /> : <ArrowRightLeft size={16} />}
+              {isTransferring ? 'Transferring...' : 'Transfer leads'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <ImportCampaignModal
         open={
