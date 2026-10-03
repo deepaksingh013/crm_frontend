@@ -5,7 +5,7 @@ import Cookies from 'js-cookie'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import AssignModal from '../leadManagment/AssignModal'
 
-const API_URL = process.env.REACT_APP_API_URL
+const API_URL = 'https://crm-backend-5-iocr.onrender.com/api'
 const PAGE_SIZE = 10
 
 const tabs = [

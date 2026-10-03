@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import axios from 'axios'
+import Cookies from 'js-cookie'
 import { Edit, Trash2, Plus, AlertCircle } from 'lucide-react'
 import CreateCampaign from './CreateCampaign'
 import DynamicTable from '../../../components/table/DynamicTable'
@@ -7,8 +8,8 @@ import Modal from '../../../components/modal/Modal'
 import toast from 'react-hot-toast'
 import ConfirmationModal from './ConfirmationModal'
 import ImportCampaignModal from '../leadManagment/ImportCampaignModal'
-import { apiGet, apiPost, apiPatch, apiDelete } from '../../../redux/apiMethods'
-import { resetApiState } from '../../../redux/apiSlice'
+
+const API_URL = 'https://crm-backend-5-iocr.onrender.com/api'
 
 const statusStyles = {
   Live: 'bg-emerald-500 text-white',
@@ -17,10 +18,10 @@ const statusStyles = {
 }
 
 const CampaignManagement = () => {
-  const dispatch = useDispatch()
-  const { loading, error } = useSelector((state) => state.api)
-
   const [campaigns, setCampaigns] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   // Modal and Selected Campaign State
   const [isCreateEditModalOpen, setIsCreateEditModalOpen] = useState(false)
@@ -28,15 +29,33 @@ const CampaignManagement = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [selectedCampaign, setSelectedCampaign] = useState(null)
 
+  // Auth Header helper
+  const getAuthHeaders = () => {
+    const token = Cookies.get('token')
+    if (!token) {
+      throw new Error('Authentication token not found. Please log in.')
+    }
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  }
+
   const fetchCampaigns = useCallback(async () => {
+    setIsLoading(true)
+    setError('')
     try {
-      const data = await dispatch(apiGet('/campaigns'))
-      const campaignList = data?.campaigns || data || []
+      const config = getAuthHeaders()
+      const response = await axios.get(`${API_URL}/campaigns`, config)
+      const campaignList = response.data?.campaigns || response.data || []
       setCampaigns(Array.isArray(campaignList) ? campaignList : [])
     } catch (err) {
-      // error is saved in redux
+      setError(err.response?.data?.message || err.message || 'Failed to fetch campaigns.')
+    } finally {
+      setIsLoading(false)
     }
-  }, [dispatch])
+  }, [])
 
   useEffect(() => {
     fetchCampaigns()
@@ -45,37 +64,41 @@ const CampaignManagement = () => {
   // Open Modals
   const handleOpenCreate = () => {
     setSelectedCampaign(null)
-    dispatch(resetApiState())
+    setError('')
     setIsCreateEditModalOpen(true)
   }
 
   const handleOpenEdit = (campaign) => {
     setSelectedCampaign(campaign)
-    dispatch(resetApiState())
+    setError('')
     setIsCreateEditModalOpen(true)
   }
 
   const handleOpenDelete = (campaign) => {
     setSelectedCampaign(campaign)
-    dispatch(resetApiState())
+    setError('')
     setIsDeleteModalOpen(true)
   }
 
   // 2. Create or Update Campaign Handler
   const handleSaveCampaign = async (formData) => {
+    setIsSubmitting(true)
+    setError('')
     try {
+      const config = getAuthHeaders()
+
       if (selectedCampaign) {
-        // Edit Mode: Send updated title to PATCH /campaigns/:id
+        // Edit Mode: Send updated title to PUT /campaigns/:id
         const payload = {
           title: formData.title || formData.name,
         }
-        await dispatch(apiPatch(`/campaigns/${selectedCampaign._id}`, payload))
+        await axios.patch(`${API_URL}/campaigns/${selectedCampaign._id}`, payload, config)
         toast.success('Campaign updated successfully!')
       } else {
         const payload = {
           title: formData.title,
         }
-        await dispatch(apiPost('/campaigns', payload))
+        await axios.post(`${API_URL}/campaigns`, payload, config)
         toast.success('Campaign created successfully!')
       }
 
@@ -84,6 +107,9 @@ const CampaignManagement = () => {
       setSelectedCampaign(null)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save campaign.')
+      setError(err.response?.data?.message || 'Failed to save campaign.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -91,30 +117,48 @@ const CampaignManagement = () => {
   const handleDeleteConfirm = async () => {
     if (!selectedCampaign?._id) return
 
+    setIsSubmitting(true)
+    setError('')
     try {
-      await dispatch(apiDelete(`/campaigns/${selectedCampaign._id}`))
+      const config = getAuthHeaders()
+      await axios.delete(`${API_URL}/campaigns/${selectedCampaign._id}`, config)
       await fetchCampaigns()
       toast.success('Campaign deleted successfully!')
       setIsDeleteModalOpen(false)
       setSelectedCampaign(null)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete campaign.')
+      const errorMessage = err.response?.data?.message || 'Failed to delete campaign.'
+      toast.error(errorMessage)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   // 4. Import Campaigns Handler
   const handleImportCampaigns = async (file) => {
+    setIsSubmitting(true)
+    setError('')
     try {
+      const config = {
+        ...getAuthHeaders(),
+        headers: {
+          ...getAuthHeaders().headers,
+          'Content-Type': 'multipart/form-data',
+        },
+      }
       const formData = new FormData()
       formData.append('file', file)
 
-      await dispatch(apiPost('/campaigns/import', formData))
+      await axios.post(`${API_URL}/campaigns/import`, formData, config)
       // On success, show toast, refetch data, and close the modal
       toast.success('Campaigns imported successfully!')
       await fetchCampaigns() // Re-fetch data to update the table
       setIsImportModalOpen(false)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to import campaigns.') // Show error toast directly
+      const errorMessage = err.response?.data?.message || 'Failed to import campaigns.'
+      toast.error(errorMessage) // Show error toast directly
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -201,7 +245,7 @@ const CampaignManagement = () => {
             <button
               type="button"
               onClick={handleOpenCreate}
-              disabled={loading}
+              disabled={isLoading || isSubmitting}
               className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 active:scale-95 disabled:opacity-50"
             >
               <Plus size={18} />
@@ -222,7 +266,7 @@ const CampaignManagement = () => {
           <DynamicTable
             columns={columns}
             data={campaigns}
-            isLoading={loading}
+            isLoading={isLoading}
           />
         </div>
       </div>
@@ -231,7 +275,7 @@ const CampaignManagement = () => {
         open={isCreateEditModalOpen}
         title={selectedCampaign ? 'Edit Campaign' : 'Create New Campaign'}
         onClose={() => {
-          if (!loading) {
+          if (!isSubmitting) {
             setIsCreateEditModalOpen(false)
             setSelectedCampaign(null)
           }
@@ -240,7 +284,7 @@ const CampaignManagement = () => {
       >
         <CreateCampaign
           onSubmit={handleSaveCampaign}
-          isLoading={loading}
+          isLoading={isSubmitting}
           initialData={selectedCampaign}
           onCancel={() => {
             setIsCreateEditModalOpen(false)
@@ -256,10 +300,10 @@ const CampaignManagement = () => {
         message={`Are you sure you want to delete "${selectedCampaign?.title || selectedCampaign?.name || 'this campaign'}"? This action cannot be undone.`}
         confirmText="Delete"
         confirmVariant="danger"
-        isLoading={loading}
+        isLoading={isSubmitting}
         onConfirm={handleDeleteConfirm}
         onClose={() => {
-          if (!loading) {
+          if (!isSubmitting) {
             setIsDeleteModalOpen(false)
             setSelectedCampaign(null)
           }
@@ -271,7 +315,7 @@ const CampaignManagement = () => {
         open={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImport={handleImportCampaigns}
-        isLoading={loading}
+        isLoading={isSubmitting}
       />
     </>
   )

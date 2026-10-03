@@ -7,7 +7,7 @@ import Cookies from 'js-cookie'
 import toast from 'react-hot-toast'
 import { Edit, Trash2, Plus, AlertCircle } from 'lucide-react'
 
-const API_URL = process.env.REACT_APP_API_URL
+const API_URL = 'https://crm-backend-5-iocr.onrender.com/api'
 
 const roleMap = {
   Manager: 'manager',
