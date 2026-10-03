@@ -599,7 +599,7 @@ const LeadStatusUpdateModal = ({
   isUpdating: externalUpdating = false,
   campaignId,
   authToken,
-  apiUrl = process.env.REACT_APP_API_URL,
+  apiUrl = 'https://crm-backend-5-iocr.onrender.com/api',
 }) => {
   const [
     selectedStatus,

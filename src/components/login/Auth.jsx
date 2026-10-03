@@ -84,7 +84,7 @@ const Auth = () => {
 
     try {
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/auth/login`,
+        "https://crm-backend-5-iocr.onrender.com/api/auth/login",
         {
           email: trimmedEmail,
           password,

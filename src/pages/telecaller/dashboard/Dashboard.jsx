@@ -3,7 +3,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import CampaingCard from "./CampaingCard";
 
-const API_URL =process.env.REACT_APP_API_URL;
+const API_URL ="https://crm-backend-5-iocr.onrender.com/api";
 
 export default function TcDashboard() {
   const [campaigns, setCampaigns] = useState([]);

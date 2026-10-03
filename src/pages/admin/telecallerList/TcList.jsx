@@ -4,7 +4,7 @@ import axios from 'axios'
 import Cookies from 'js-cookie'
 import { Link } from 'react-router-dom'
 
-const API_URL = process.env.REACT_APP_API_URL
+const API_URL = 'https://crm-backend-5-iocr.onrender.com/api'
 
 const TcList = () => {
   const [telecallers, setTelecallers] = useState([])
