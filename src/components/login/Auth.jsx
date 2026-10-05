@@ -202,25 +202,25 @@ const Auth = () => {
           className="
             relative
             overflow-hidden
-            rounded-[2rem]
+            rounded-[1.5rem]
             border
             border-[var(--border)]
             bg-[var(--surface)]
-            p-6
+            p-5
             shadow-[0_25px_80px_rgba(15,23,36,0.12)]
             backdrop-blur-xl
             transition-all
             duration-500
             hover:shadow-[0_30px_90px_rgba(15,23,36,0.16)]
-            sm:p-8
+            sm:p-6
           "
         >
           <div className="mb-4 text-center">
-            <div className=" mx-auto mb-3 flex h-16 w-[140px] items-center justify-center transition-transform duration-300 hover:scale-105">
+            <div className=" mx-auto mb-2 flex h-12 w-24 items-center justify-center transition-transform duration-300 hover:scale-105">
               <img
                 src="/final_logo.png"
                 alt="Apna India logo"
-                className="object-contain"
+                className="h-full w-full object-contain"
               />
             </div>
 

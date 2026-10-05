@@ -1034,37 +1034,26 @@ const LeadDetails = () => {
       )} of ${totalLeads}`
   const paginationItems = getPaginationItems(page, totalPages)
   return (
-    <div className="min-w-0 space-y-5">
-      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--primary)]">
-            Campaign Leads
-          </p>
-
-          <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-[var(--text)]">
-            {getCampaignTitle(
-              campaign
-            )}
-          </h1>
-
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            View and manage leads for
-            this campaign.
-          </p>
-        </div>
+    <div className="flex min-w-0 flex-col gap-3 md:max-h-[calc(100vh-6.875rem)]">
+      {/* PAGE HEADER */}
+      <div className="flex min-w-0 shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="min-w-0 break-words text-xl font-bold capitalize tracking-tight text-[var(--text)]">
+          {getCampaignTitle(
+            campaign
+          )}
+        </h1>
 
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
 
           {/* IMPORT */}
           <button type="button" onClick={() => setIsImportModalOpen( true )}
             disabled={ isImporting}
-            className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-4"
+            className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
           >
             {isImporting ? (
-              <Loader2 size={17} className="animate-spin" />
+              <Loader2 size={15} className="animate-spin" />
             ) : (
-              <Upload size={17} />
+              <Upload size={15} />
               )}
 
             {isImporting
@@ -1072,8 +1061,8 @@ const LeadDetails = () => {
               : 'Import Leads'}
           </button>
 
-          <Link to="/leads" className="inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--text)] shadow-sm transition-all hover:bg-[var(--surface-alt)]">
-            <ArrowLeft size={17} />
+          <Link to="/leads" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:bg-[var(--surface-alt)]">
+            <ArrowLeft size={15} />
             <span className="hidden sm:inline">
               Back
             </span>
@@ -1081,76 +1070,66 @@ const LeadDetails = () => {
         </div>
       </div>
 
-      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-3">
-        {/* SEARCH */}
-        <div className="relative">
-          <Search
-            size={18}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-          />
+      {/* TOOLBAR: filters + actions + status tabs */}
+      <div className="shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+        <div className="flex min-w-0 flex-col gap-2 p-2.5 lg:flex-row lg:items-center">
+          <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
+            {/* SEARCH */}
+            <div className="relative">
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+              />
 
-          <input
-            type="text"
-            placeholder="Search leads..."
-            value={
-              filterQuery
-            }
-            onChange={(e) => {
-              setFilterQuery(
-                e.target.value
-              )
-              resetToFirstPage()
-            }}
-            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-10 pr-4 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
-          />
-        </div>
+              <input
+                type="text"
+                placeholder="Search leads..."
+                value={
+                  filterQuery
+                }
+                onChange={(e) => {
+                  setFilterQuery(
+                    e.target.value
+                  )
+                  resetToFirstPage()
+                }}
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
+              />
+            </div>
 
-        <label className="block">
-          <input
-            type="date"
-            aria-label="Created from date"
-            value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value)
-              resetToFirstPage()
-            }}
-            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
-          />
-        </label>
+            <label className="block">
+              <input
+                type="date"
+                aria-label="Created from date"
+                value={fromDate}
+                onChange={(e) => {
+                  setFromDate(e.target.value)
+                  resetToFirstPage()
+                }}
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] px-3 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
+              />
+            </label>
 
-        <label className="block">
-          <input
-            type="date"
-            aria-label="Created to date"
-            value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value)
-              resetToFirstPage()
-            }}
-            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
-          />
-        </label>
-      </div>
+            <label className="block">
+              <input
+                type="date"
+                aria-label="Created to date"
+                value={toDate}
+                onChange={(e) => {
+                  setToDate(e.target.value)
+                  resetToFirstPage()
+                }}
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] px-3 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
+              />
+            </label>
+          </div>
 
-      {!loading &&
-        !error && (
-          <div className="space-y-3">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex items-center gap-3">
-                <p className="text-sm font-medium text-[var(--muted)]">
-                  Total {getStatusLabel(statusFilter)} Leads
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold tracking-tight text-[var(--text)]">
-                    {loading ? '...' : totalLeads}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
-                <div className="relative min-w-0 flex-1 xl:flex-none">
+          {!loading &&
+            !error && (
+              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:justify-end">
+                <div className="relative min-w-0 basis-full sm:basis-auto sm:flex-1 lg:flex-none">
                   <UserRound
-                    size={17}
+                    size={15}
                     className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]"
                   />
                   <select
@@ -1170,7 +1149,7 @@ const LeadDetails = () => {
                     disabled={
                       telecallersLoading
                     }
-                    className="h-11 w-full min-w-0 appearance-none rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60 xl:min-w-[190px]"
+                    className="h-9 w-full min-w-0 appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 text-sm font-medium text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60 lg:min-w-[11rem]"
                   >
                     <option value="">
                       {telecallersLoading
@@ -1206,7 +1185,7 @@ const LeadDetails = () => {
                   </select>
 
                   <ChevronDown
-                    size={16}
+                    size={14}
                     className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
                   />
                 </div>
@@ -1223,10 +1202,10 @@ const LeadDetails = () => {
                       resetToFirstPage()
                     }}
                     title="Clear telecaller filter"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition-all hover:bg-[var(--surface-alt)] hover:text-[var(--text)]"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-alt)] hover:text-[var(--text)]"
                   >
                     <RotateCcw
-                      size={16}
+                      size={14}
                     />
                   </button>
                 )}
@@ -1239,12 +1218,12 @@ const LeadDetails = () => {
                     setIsTransferModalOpen(true)
                   }}
                   disabled={isTransferring}
-                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:border-[var(--primary)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:border-[var(--primary)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <ArrowRightLeft size={17} />
+                  <ArrowRightLeft size={15} />
                   Transfer Leads
                   {selectedLeadCount > 0 && (
-                    <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 text-xs text-[var(--primary)]">
+                    <span className="rounded-full bg-blue-50 px-1.5 py-px text-xs text-[var(--primary)]">
                       {selectedLeadCount}
                     </span>
                   )}
@@ -1261,16 +1240,16 @@ const LeadDetails = () => {
                   disabled={
                     isAssigning
                   }
-                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                  className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isAssigning ? (
                     <Loader2
-                      size={17}
+                      size={15}
                       className="animate-spin"
                     />
                   ) : (
                     <UserPlus
-                      size={17}
+                      size={15}
                     />
                   )}
 
@@ -1282,7 +1261,7 @@ const LeadDetails = () => {
 
                   {selectedLeadCount >
                     0 && (
-                      <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+                      <span className="rounded-full bg-white/20 px-1.5 py-px text-xs">
                         {
                           selectedLeadCount
                         }
@@ -1290,36 +1269,50 @@ const LeadDetails = () => {
                     )}
                 </button>
               </div>
-            </div>
+            )}
+        </div>
 
-            <div className="flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1">
-              {STATUS_TABS.map(({ value, label }) => {
-                const isActive = statusFilter === value
+        {!loading &&
+          !error && (
+            <div className="flex min-w-0 flex-col gap-2 border-t border-[var(--border)] px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex max-w-full flex-wrap items-center gap-0.5 rounded-lg bg-[var(--surface-alt)] p-0.5">
+                {STATUS_TABS.map(({ value, label }) => {
+                  const isActive = statusFilter === value
 
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter(value)
-                      resetToFirstPage()
-                    }}
-                    className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${isActive
-                        ? 'bg-[var(--primary)] text-white shadow-sm'
-                        : 'text-[var(--muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)]'
-                      }`}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(value)
+                        resetToFirstPage()
+                      }}
+                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${isActive
+                          ? 'bg-[var(--surface)] text-[var(--primary)] shadow-sm ring-1 ring-[var(--border)]'
+                          : 'text-[var(--muted)] hover:text-[var(--text)]'
+                        }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium text-[var(--muted)]">
+                  Total {getStatusLabel(statusFilter)} Leads
+                </p>
+                <span className="rounded-md bg-blue-50 px-2 py-0.5 text-sm font-bold tabular-nums text-[var(--primary)]">
+                  {loading ? '...' : totalLeads}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+      </div>
 
       {!loading &&
         error && (
-          <div className="rounded-2xl border border-red-200 bg-[var(--surface)] px-6 py-12 text-center">
+          <div className="shrink-0 rounded-xl border border-red-200 bg-[var(--surface)] px-6 py-8 text-center">
 
             <p className="text-sm font-semibold text-red-500">
               Failed to load leads
@@ -1344,12 +1337,12 @@ const LeadDetails = () => {
         )}
 
       {!error && (
-        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
-          <div className={`max-w-full overflow-x-auto overscroll-x-contain lead-table-scroll ${loading ? 'lead-table-loading' : ''}`}>
-            <table className="lead-table w-full min-w-0 border-collapse text-left text-sm md:min-w-[1150px]">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
-                  <th className="px-4 py-4">
+        <div className="app-table-card flex min-h-0 flex-col md:min-h-[16rem]">
+          <div className={`max-w-full overflow-x-auto overscroll-x-contain md:min-h-0 md:flex-1 md:overflow-y-auto lead-table-scroll ${loading ? 'lead-table-loading' : ''}`}>
+            <table className="lead-table app-table min-w-0 md:min-w-[64rem]">
+              <thead className="md:sticky md:top-0 md:z-10 md:shadow-[0_1px_0_var(--border)]">
+                <tr>
+                  <th className="px-3 py-2.5">
                     <label className="flex items-center justify-center">
                       <input
                         type="checkbox"
@@ -1363,54 +1356,54 @@ const LeadDetails = () => {
                       />
                     </label>
                   </th>
-                  <th className="px-4 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Date
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Name
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Mobile No
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Pin code
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Address
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     TC Name
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Status
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Last Activity
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--border)]">
+              <tbody>
                 {loading ? (
                   Array.from({ length: 6 }).map((_, index) => (
-                    <tr key={`loading-${index}`} className="animate-pulse">
-                      <td className="px-4 py-4"><span className="lead-skeleton block h-4 w-4 rounded" /></td>
-                      <td className="px-4 py-4"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-28 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-12 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-6 w-20 rounded-full" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-32 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-7 w-14 rounded-lg" /></td>
+                    <tr key={`loading-${index}`} className="app-table-skeleton">
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-4 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-28 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-12 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-6 w-20 rounded-full" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-32 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-7 w-14 rounded-lg" /></td>
                     </tr>
                   ))
                 ) : leads.length === 0 ? (
                   <tr className="lead-empty-row">
-                    <td colSpan="10" className="px-6 py-16 text-center">
+                    <td colSpan="10" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <Search
                           size={24}
@@ -1449,7 +1442,7 @@ const LeadDetails = () => {
                             : ''
                           }`}
                       >
-                        <td data-label="Select" className="px-4 py-4 text-center">
+                        <td data-label="Select" className="px-3 py-2 text-center">
                           <input
                             type="checkbox"
                             checked={
@@ -1466,28 +1459,28 @@ const LeadDetails = () => {
                             className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
                           />
                         </td>
-                        <td data-label="Date" className="whitespace-nowrap px-4 py-4 text-[var(--muted)]">
+                        <td data-label="Date" className="whitespace-nowrap px-3 py-2 text-[var(--muted)]">
                           {formatDate(
                             row.createdAt
                           )}
                         </td>
-                        <td data-label="Name" className="px-6 py-4">
-                          <span className="font-semibold text-[var(--text)]">
+                        <td data-label="Name" className="px-3 py-2">
+                          <span className="block max-w-[14rem] truncate font-semibold text-[var(--text)]" title={row.name || ''}>
                             {row.name ||
                               'N/A'}
                           </span>
                         </td>
-                        <td data-label="Mobile No" className="px-6 py-4 text-[var(--muted)]">
+                        <td data-label="Mobile No" className="whitespace-nowrap px-3 py-2 tabular-nums text-[var(--text)]">
                           {row.mobile ||
                             'N/A'}
                         </td>
-                        <td data-label="Pin code" className="px-6 py-4 text-[var(--muted)]">
+                        <td data-label="Pin code" className="whitespace-nowrap px-3 py-2 text-[var(--muted)]">
                           {row.pincode ||
                             'N/A'}
                         </td>
                         <td
                           data-label="Address"
-                          className="max-w-xs truncate px-6 py-4 text-[var(--muted)]"
+                          className="max-w-[14rem] truncate px-3 py-2 text-[var(--muted)]"
                           title={
                             row.address ||
                             ''
@@ -1496,11 +1489,11 @@ const LeadDetails = () => {
                           {row.address ||
                             'N/A'}
                         </td>
-                        <td data-label="TC Name" className="px-6 py-4">
+                        <td data-label="TC Name" className="whitespace-nowrap px-3 py-2">
                           {row.assignedTo
                             ?.name ? (
-                            <div className="inline-flex items-center gap-2">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)]/10">
+                            <div className="inline-flex items-center gap-1.5">
+                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50">
                                 <UserRound
                                   size={
                                     14
@@ -1522,9 +1515,9 @@ const LeadDetails = () => {
                             </span>
                           )}
                         </td>
-                        <td data-label="Status" className="px-6 py-4">
+                        <td data-label="Status" className="px-3 py-2">
                           <span
-                            className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusClass(
                               row.status
                             )}`}
                           >
@@ -1533,7 +1526,7 @@ const LeadDetails = () => {
                             )}
                           </span>
                         </td>
-                        <td data-label="Last Activity" className="whitespace-nowrap px-6 py-4 text-[var(--muted)]">
+                        <td data-label="Last Activity" className="whitespace-nowrap px-3 py-2 text-[var(--muted)]">
                           {formatDateTime(
                             row.activityAt ||
                             row.lastActivityAt ||
@@ -1542,11 +1535,11 @@ const LeadDetails = () => {
                             row.createdAt
                           )}
                         </td>
-                        <td data-label="Action" className="px-6 py-4">
+                        <td data-label="Action" className="px-3 py-2">
                           <button
                             type="button"
                             disabled
-                            className="cursor-not-allowed rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white opacity-60 shadow-sm"
+                            className="app-table-btn cursor-not-allowed opacity-60"
                           >
                             Update
                           </button>
@@ -1560,7 +1553,7 @@ const LeadDetails = () => {
             </table>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-[var(--border)] px-4 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="flex shrink-0 flex-col gap-2 border-t border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
             <span className="font-medium text-[var(--muted)]">
               {displayedRange}
             </span>
@@ -1581,14 +1574,14 @@ const LeadDetails = () => {
                   page === 1
                 }
                 aria-label="Previous page"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft
-                  size={17}
+                  size={15}
                 />
               </button>
               {paginationItems.map((item) => item.type === 'ellipsis' ? (
-                <span key={item.key} aria-hidden="true" className="flex h-9 min-w-7 items-center justify-center text-sm text-[var(--muted)]">
+                <span key={item.key} aria-hidden="true" className="flex h-8 min-w-6 items-center justify-center text-xs text-[var(--muted)]">
                   ...
                 </span>
               ) : (
@@ -1598,7 +1591,7 @@ const LeadDetails = () => {
                   onClick={() => setPage(item.value)}
                   aria-label={`Page ${item.value}`}
                   aria-current={page === item.value ? 'page' : undefined}
-                  className={`h-9 min-w-9 rounded-lg border px-2 text-sm font-semibold transition-colors ${page === item.value
+                  className={`h-8 min-w-8 rounded-md border px-2 text-xs font-semibold transition-colors ${page === item.value
                     ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
                     : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-alt)]'
                     }`}
@@ -1623,10 +1616,10 @@ const LeadDetails = () => {
                   totalPages
                 }
                 aria-label="Next page"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronRight
-                  size={17}
+                  size={15}
                 />
               </button>
 
@@ -1667,7 +1660,7 @@ const LeadDetails = () => {
         onClose={() => setIsTransferModalOpen(false)}
         isLoading={isTransferring}
       >
-        <form onSubmit={handleTransferLeads} className="space-y-5">
+        <form onSubmit={handleTransferLeads} className="space-y-4">
           <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
             <p className="text-sm font-semibold text-blue-900">
               {transferMode === 'selected' ? 'Transfer selected leads' : 'Transfer by count'}
@@ -1688,7 +1681,7 @@ const LeadDetails = () => {
               onChange={(event) => setTargetCampaignId(event.target.value)}
               disabled={campaignsLoading || isTransferring}
               required
-              className="h-11 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-9 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="">
                 {campaignsLoading ? 'Loading campaigns...' : 'Choose a campaign'}
@@ -1735,7 +1728,7 @@ const LeadDetails = () => {
                 onChange={(event) => setTransferCount(event.target.value)}
                 disabled={isTransferring}
                 required
-                className="h-11 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:opacity-60"
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:opacity-60"
               />
               <span className="mt-1 block text-xs text-[var(--muted)]">
                 Up to {totalLeads} leads are available in the {getStatusLabel(statusFilter).toLowerCase()} tab.
@@ -1748,7 +1741,7 @@ const LeadDetails = () => {
               type="button"
               onClick={() => setIsTransferModalOpen(false)}
               disabled={isTransferring}
-              className="h-10 rounded-lg border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-alt)] disabled:opacity-50"
+              className="h-9 rounded-lg border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-alt)] disabled:opacity-50"
             >
               Cancel
             </button>
@@ -1757,7 +1750,7 @@ const LeadDetails = () => {
               disabled={isTransferring || campaignsLoading || !targetCampaignId || (
                 transferMode === 'selected' ? selectedLeadIds.length === 0 : totalLeads === 0
               )}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isTransferring ? <Loader2 size={16} className="animate-spin" /> : <ArrowRightLeft size={16} />}
               {isTransferring ? 'Transferring...' : 'Transfer leads'}

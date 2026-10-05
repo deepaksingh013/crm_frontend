@@ -16,29 +16,29 @@ const CampaignCard = ({ campaign }) => {
   return (
     <div
       onClick={handleCardClick}
-      className="group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+      className="group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="absolute left-0 right-0 top-0 h-[3px] bg-gradient-to-r from-teal-700 to-purple-600" />
 
-      <div className="p-5 sm:p-6">
+      <div className="p-3.5">
 
-        <h2 className="truncate pr-2 text-base font-bold text-gray-800 sm:text-lg">
+        <h2 className="truncate pr-2 text-sm font-bold capitalize text-gray-800">
           {campaign.name}
         </h2>
 
         <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-3xl font-bold leading-none text-teal-700 sm:text-[32px]">
+          <span className="text-2xl font-bold leading-none text-teal-700">
             {campaign.totalLeads}
           </span>
 
-          <span className="text-xs text-gray-400 sm:text-sm">
+          <span className="text-xs text-gray-400">
             Total Leads
           </span>
         </div>
 
-        <div className="my-4 border-t border-gray-100" />
+        <div className="my-2.5 border-t border-gray-100" />
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5">
           <StatusBox
             label="Pending"
             count={campaign.pending}
@@ -65,7 +65,7 @@ const CampaignCard = ({ campaign }) => {
         </div>
 
         {/* Not Connected */}
-        <div className="mt-2">
+        <div className="mt-1.5">
           <StatusBox
             label="Not Connected"
             count={campaign.notConnected}
@@ -73,7 +73,7 @@ const CampaignCard = ({ campaign }) => {
           />
         </div>
 
-        <div className="my-4 border-t border-gray-100" />
+        <div className="my-2.5 border-t border-gray-100" />
 
         {/* Footer */}
         <div className="text-center text-xs text-gray-400 transition-colors group-hover:text-teal-700">
@@ -91,14 +91,14 @@ function StatusBox({
 }) {
   return (
     <div
-      className={`rounded-lg border px-3 py-2.5 ${className}`}
+      className={`rounded-md border px-2.5 py-1.5 ${className}`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-[11px] font-semibold uppercase tracking-wide">
           {label}
         </span>
 
-        <span className="text-base font-bold">
+        <span className="text-sm font-bold">
           {count ?? 0}
         </span>
       </div>

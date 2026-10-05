@@ -273,16 +273,16 @@ const Sidebar = ({
           transition-[width,transform]
           duration-300
           ease-in-out
-          w-[280px]
+          w-[17rem]
 
           ${open ? 'translate-x-0' : '-translate-x-full'}
 
           md:translate-x-0
 
-          ${collapsed ? 'md:w-[82px]' : 'md:w-[280px]'}
+          ${collapsed ? 'md:w-[5.125rem]' : 'md:w-[17rem]'}
         `}
       >
-        <div className="flex h-full flex-col px-4 py-5">
+        <div className="flex h-full flex-col px-3 py-4">
 
           {/* Header */}
           <div
@@ -308,11 +308,11 @@ const Sidebar = ({
                 </div>
               ) : (
                 <div className="mb-4 text-center">
-                  <div className=" mx-auto mb-3 ml-7 flex h-16 w-[140px] items-center justify-center transition-transform duration-300 hover:scale-105">
+                  <div className=" mx-auto mb-1 ml-7 flex h-11 w-[5.5rem] items-center justify-center transition-transform duration-300 hover:scale-105">
                     <img
                       src="/final_logo.png"
                       alt="Apna India logo"
-                      className="object-contain"
+                      className="h-full w-full object-contain"
                     />
                   </div>
                 </div>
@@ -340,7 +340,7 @@ const Sidebar = ({
               className="
               absolute
               -right-3
-              top-[68px]
+              top-[3rem]
               z-50
               hidden
               h-7
@@ -415,7 +415,7 @@ const Sidebar = ({
                         group
                         relative
                         flex
-                        min-h-[46px]
+                        min-h-[2.5rem]
                         shrink-0
                         items-center
                         rounded-xl
@@ -502,7 +502,7 @@ const Sidebar = ({
                     group
                     relative
                     flex
-                    min-h-[46px]
+                    min-h-[2.5rem]
                     shrink-0
                     items-center
                     rounded-xl

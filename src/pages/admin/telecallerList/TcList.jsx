@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertCircle, CheckCircle2, Eye, Loader2, RefreshCw, Search, Users } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Eye, RefreshCw, Search, Users } from 'lucide-react'
+import TableSkeleton from '../../../components/table/TableSkeleton'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 import { Link } from 'react-router-dom'
@@ -95,31 +96,30 @@ const TcList = () => {
 
       {error && <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle size={18} className="shrink-0" /><span>{error}</span><button type="button" onClick={fetchAssignmentSummary} className="ml-auto font-semibold underline">Try again</button></div>}
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+      <div className="app-table-card">
         <div className="overflow-x-auto">
-          <table className="min-w-[1050px] w-full border-collapse text-left text-sm">
-            <thead><tr className="border-b border-[var(--border)]">
-              {['Telecaller', 'Campaigns', 'New', 'Pending', 'Completed', 'Not connected', 'Holding', 'Rejected', 'Total', 'Action'].map((heading) => <th key={heading} className="px-5 py-4 font-semibold text-[var(--muted)]">{heading}</th>)}
+          <table className="app-table min-w-[60rem]">
+            <thead><tr>
+              {['Telecaller', 'Campaigns', 'New', 'Pending', 'Completed', 'Not connected', 'Holding', 'Rejected', 'Total', 'Action'].map((heading) => <th key={heading}>{heading}</th>)}
             </tr></thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {isLoading ? <tr>
-                <td colSpan={10} className="py-14 text-center"><span className="inline-flex items-center gap-2 text-[var(--muted)]"><Loader2 size={20} className="animate-spin" />Loading telecallers...</span></td></tr>
+            <tbody>
+              {isLoading ? <TableSkeleton columns={10} />
                 : filteredTelecallers.length === 0 ? <tr><td colSpan={10} className="py-14 text-center text-[var(--muted)]">{searchTerm ? 'No telecallers match your search.' : 'No telecaller assignments found.'}</td></tr>
                   : filteredTelecallers.map((telecaller, index) => {
                     const name = telecaller.assignedTo?.name || 'Unknown telecaller'
                     const email = telecaller.assignedTo?.email || ''
                     const campaigns = telecaller.campaigns || []
-                    return <tr key={telecaller.assignedTo?.userId || index} className="transition hover:bg-[var(--surface-alt)]">
-                      <td className="px-5 py-4"><div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-700">{name.charAt(0).toUpperCase()}</span><div><Link to={`/telecallers/${telecaller.assignedTo?.userId}`} state={{ telecaller }} className="font-semibold text-[var(--text)] hover:text-[var(--primary)]">{name}{email && <p className="text-xs text-[var(--muted)]">{email}</p>}</Link></div></div></td>
-                      <td className="max-w-[250px] px-5 py-4"><div className="flex max-w-[240px] items-center gap-1.5"><span className="truncate text-[var(--text)]">{campaigns.length > 0 ? campaigns.slice(0, 2).map((campaign) => campaign.name).join(', ') : 'No campaigns'}</span>{campaigns.length > 2 && <span className="shrink-0 text-xs font-semibold text-[var(--primary)]">...</span>}</div></td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{getCount(telecaller, 'new')}</td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{getCount(telecaller, 'pending')}</td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{getCount(telecaller, 'complete')}</td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{getCount(telecaller, 'notConnected')}</td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{getCount(telecaller, 'holding')}</td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{getCount(telecaller, 'reject')}</td>
-                      <td className="px-5 py-4"><span className="inline-flex rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">{Number(telecaller.totalLeads || 0)}</span></td>
-                      <td className="px-5 py-4"><Link to={`/telecallers/${telecaller.assignedTo?.userId}`} state={{ telecaller }} aria-label={`View ${name}`} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"><Eye size={16} /><span>View</span></Link></td>
+                    return <tr key={telecaller.assignedTo?.userId || index} >
+                      <td><div className="flex items-center gap-2.5"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">{name.charAt(0).toUpperCase()}</span><div><Link to={`/telecallers/${telecaller.assignedTo?.userId}`} state={{ telecaller }} className="font-semibold text-[var(--text)] hover:text-[var(--primary)]">{name}{email && <p className="text-xs text-[var(--muted)]">{email}</p>}</Link></div></div></td>
+                      <td className="max-w-[15rem]"><div className="flex max-w-[14rem] items-center gap-1.5"><span className="truncate text-[var(--text)]">{campaigns.length > 0 ? campaigns.slice(0, 2).map((campaign) => campaign.name).join(', ') : 'No campaigns'}</span>{campaigns.length > 2 && <span className="shrink-0 text-xs font-semibold text-[var(--primary)]">...</span>}</div></td>
+                      <td className="tabular-nums text-[var(--muted)]">{getCount(telecaller, 'new')}</td>
+                      <td className="tabular-nums text-[var(--muted)]">{getCount(telecaller, 'pending')}</td>
+                      <td className="tabular-nums text-[var(--muted)]">{getCount(telecaller, 'complete')}</td>
+                      <td className="tabular-nums text-[var(--muted)]">{getCount(telecaller, 'notConnected')}</td>
+                      <td className="tabular-nums text-[var(--muted)]">{getCount(telecaller, 'holding')}</td>
+                      <td className="tabular-nums text-[var(--muted)]">{getCount(telecaller, 'reject')}</td>
+                      <td><span className="app-table-count">{Number(telecaller.totalLeads || 0)}</span></td>
+                      <td><Link to={`/telecallers/${telecaller.assignedTo?.userId}`} state={{ telecaller }} aria-label={`View ${name}`} className="app-table-btn"><Eye size={14} /><span>View</span></Link></td>
                     </tr>
                   })}
             </tbody>

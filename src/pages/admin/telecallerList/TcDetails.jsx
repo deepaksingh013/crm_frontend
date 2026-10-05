@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, AlertCircle, ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, AlertCircle, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
+import TableSkeleton from '../../../components/table/TableSkeleton'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 import { Link, useLocation, useParams } from 'react-router-dom'
@@ -263,34 +264,34 @@ const TcDetails = () => {
         </label>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+      <div className="app-table-card">
         <div className="overflow-x-auto">
-          <table className="min-w-[850px] w-full border-collapse text-left text-sm">
-            <thead><tr className="border-b border-[var(--border)]"><th className="px-5 py-4">{/* <input type="checkbox" checked={allLeadsSelected} onChange={toggleSelectAllRows} disabled={leads.length === 0 || isLoading} aria-label="Select all leads on this page" className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /> */}</th>{['Lead', 'Phone', 'Email', 'Campaign', 'Status', 'Created', 'Last activity'].map((heading) => <th key={heading} className="px-5 py-4 font-semibold text-[var(--muted)]">{heading}</th>)}</tr></thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {isLoading ? <tr><td colSpan={7} className="py-14 text-center"><span className="inline-flex items-center gap-2 text-[var(--muted)]"><Loader2 size={20} className="animate-spin" />Loading leads...</span></td></tr>
-                : leads.length === 0 ? <tr><td colSpan={7} className="py-14 text-center text-[var(--muted)]">No leads found for this status.</td></tr>
+          <table className="app-table min-w-[50rem]">
+            <thead><tr><th className="w-0">{/* <input type="checkbox" checked={allLeadsSelected} onChange={toggleSelectAllRows} disabled={leads.length === 0 || isLoading} aria-label="Select all leads on this page" className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /> */}</th>{['Lead', 'Phone', 'Email', 'Campaign', 'Status', 'Created', 'Last activity'].map((heading) => <th key={heading}>{heading}</th>)}</tr></thead>
+            <tbody>
+              {isLoading ? <TableSkeleton columns={8} />
+                : leads.length === 0 ? <tr><td colSpan={8} className="py-12 text-center text-[var(--muted)]">No leads found for this status.</td></tr>
                   : leads.map((lead, index) => {
                     const leadName = formatDisplayValue(getLeadValue(lead, ['name', 'fullName', 'leadName', 'customerName']))
                     const status = formatDisplayValue(getLeadValue(lead, ['status'], 'Unknown'), 'Unknown')
                     const leadId = lead._id || lead.id
-                    return <tr key={leadId || index} className="hover:bg-[var(--surface-alt)]">
-                      <td className="px-5 py-4">{/* <input type="checkbox" checked={Boolean(leadId && selectedLeadIds.includes(leadId))} onChange={() => toggleLeadSelection(leadId)} disabled={!leadId} aria-label={`Select ${leadName}`} className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /> */}</td>
-                      <td className="px-5 py-4 font-semibold text-[var(--text)]">{leadName}</td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{formatDisplayValue(getLeadValue(lead, ['phone', 'mobile', 'phoneNumber']))}</td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{formatDisplayValue(getLeadValue(lead, ['email']))}</td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{formatDisplayValue(lead.campaign || lead.campaignName || getLeadValue(lead, ['campaign'], 'N/A'))}</td>
-                      <td className="px-5 py-4"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(status)}`}>{status}</span></td>
-                      <td className="px-5 py-4 text-[var(--muted)]">{formatDate(lead.createdAt || lead.createdDate)}</td>
-                      <td className="whitespace-nowrap px-5 py-4 text-[var(--muted)]">{formatDateTime(lead.activityAt || lead.lastActivityAt || lead.assignedAt || lead.updatedAt || lead.createdAt || lead.createdDate)}</td>
+                    return <tr key={leadId || index}>
+                      <td className="w-0">{/* <input type="checkbox" checked={Boolean(leadId && selectedLeadIds.includes(leadId))} onChange={() => toggleLeadSelection(leadId)} disabled={!leadId} aria-label={`Select ${leadName}`} className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)]" /> */}</td>
+                      <td className="font-semibold text-[var(--text)]">{leadName}</td>
+                      <td className="text-[var(--muted)]">{formatDisplayValue(getLeadValue(lead, ['phone', 'mobile', 'phoneNumber']))}</td>
+                      <td className="text-[var(--muted)]">{formatDisplayValue(getLeadValue(lead, ['email']))}</td>
+                      <td className="text-[var(--muted)]">{formatDisplayValue(lead.campaign || lead.campaignName || getLeadValue(lead, ['campaign'], 'N/A'))}</td>
+                      <td><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusBadgeClass(status)}`}>{status}</span></td>
+                      <td className="text-[var(--muted)]">{formatDate(lead.createdAt || lead.createdDate)}</td>
+                      <td className="whitespace-nowrap text-[var(--muted)]">{formatDateTime(lead.activityAt || lead.lastActivityAt || lead.assignedAt || lead.updatedAt || lead.createdAt || lead.createdDate)}</td>
                     </tr>
                   })}
             </tbody>
           </table>
         </div>
-        <div className="flex flex-col gap-3 border-t border-[var(--border)] px-5 py-4 text-sm text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 border-t border-[var(--border)] px-3 py-2 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
           <span>{displayedRange}</span>
-          <div className="flex items-center gap-2"><button type="button" onClick={() => setPage((current) => Math.max(current - 1, 1))} disabled={page === 1 || isLoading} aria-label="Previous page" className="rounded-lg border border-[var(--border)] p-2 text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={17} /></button><span className="min-w-20 text-center font-medium text-[var(--text)]">Page {page} of {totalPages}</span><button type="button" onClick={() => setPage((current) => Math.min(current + 1, totalPages))} disabled={page >= totalPages || isLoading} aria-label="Next page" className="rounded-lg border border-[var(--border)] p-2 text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"><ChevronRight size={17} /></button></div>
+          <div className="flex items-center gap-2"><button type="button" onClick={() => setPage((current) => Math.max(current - 1, 1))} disabled={page === 1 || isLoading} aria-label="Previous page" className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /></button><span className="min-w-20 text-center font-medium text-[var(--text)]">Page {page} of {totalPages}</span><button type="button" onClick={() => setPage((current) => Math.min(current + 1, totalPages))} disabled={page >= totalPages || isLoading} aria-label="Next page" className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"><ChevronRight size={15} /></button></div>
         </div>
       </div>
 

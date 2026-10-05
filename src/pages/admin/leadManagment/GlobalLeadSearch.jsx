@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
-import { AlertCircle, Loader2, Search, UserRound, Users } from 'lucide-react'
+import { AlertCircle, Search, UserRound, Users } from 'lucide-react'
+import TableSkeleton from '../../../components/table/TableSkeleton'
 import { apiGet } from '../../../redux/apiMethods'
 
 const getLeadRows = (response) => {
@@ -176,7 +177,7 @@ const GlobalLeadSearch = () => {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm">
+      <div className="app-table-card">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-sm font-semibold text-[var(--text)]">Matching leads</h2>
@@ -193,26 +194,19 @@ const GlobalLeadSearch = () => {
         </div>
 
         <div className="max-h-[65vh] overflow-auto">
-          <table className="min-w-full border-collapse text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-50">
+          <table className="app-table min-w-full">
+            <thead className="sticky top-0 z-10">
               <tr className="border-b border-[var(--border)]">
                 {LEAD_COLUMNS.map((column) => (
-                  <th key={column.label} className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase text-slate-500 sm:px-5">
+                  <th key={column.label}>
                     {column.label}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border)]">
+            <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={LEAD_COLUMNS.length} className="px-4 py-14 text-center text-sm text-[var(--muted)]">
-                    <span className="inline-flex items-center gap-2">
-                      <Loader2 size={18} className="animate-spin" />
-                      Searching leads...
-                    </span>
-                  </td>
-                </tr>
+                <TableSkeleton columns={LEAD_COLUMNS.length} />
               ) : error ? (
                 <tr>
                   <td colSpan={LEAD_COLUMNS.length} className="px-4 py-14 text-center text-sm text-[var(--muted)]">
@@ -221,7 +215,7 @@ const GlobalLeadSearch = () => {
                 </tr>
               ) : flattenedLeads.length > 0 ? (
                 flattenedLeads.map((lead, index) => (
-                  <tr key={lead._id || lead.id || index} className="transition-colors hover:bg-slate-50">
+                  <tr key={lead._id || lead.id || index}>
                     {LEAD_COLUMNS.map((column) => {
                       const value = getLeadField(lead, column.keys)
                       const displayValue = column.label === 'Created Date'
@@ -229,7 +223,7 @@ const GlobalLeadSearch = () => {
                         : formatValue(value)
 
                       return (
-                      <td key={column.label} className="max-w-[360px] whitespace-nowrap px-4 py-3 align-top text-slate-700 sm:px-5">
+                      <td key={column.label} className="max-w-[22rem] whitespace-nowrap text-slate-700">
                         <span title={displayValue} className="block truncate">
                           {displayValue}
                         </span>

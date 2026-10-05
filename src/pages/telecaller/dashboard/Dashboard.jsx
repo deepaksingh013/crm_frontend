@@ -181,21 +181,21 @@ export default function TcDashboard() {
   }, [fetchCampaigns]);
 
   return (
-    <main className="min-h-screen bg-[#f5f7fa]">
-      <div className="mx-auto min-h-screen w-full max-w-[1400px] px-3 py-5 sm:px-5 sm:py-7 md:px-7 lg:px-10">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-800 sm:text-3xl">
+    <main className="min-w-0">
+      <div className="w-full">
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <h1 className="text-xl font-bold tracking-tight text-gray-800">
             Campaign Details
           </h1>
 
-          <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+          <p className="text-xs text-gray-500">
             Overview of all campaign leads and
             their status
           </p>
         </div>
 
         {!loading && !error && (
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card) => (
               <DashboardStatCard
                 key={card.title}
@@ -206,7 +206,7 @@ export default function TcDashboard() {
         )}
 
         {loading && (
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map(
               (_, index) => (
                 <DashboardCardSkeleton
@@ -218,7 +218,7 @@ export default function TcDashboard() {
         )}
 
         {loading && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-5 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {Array.from({ length: 6 }).map(
               (_, index) => (
                 <CampaignSkeleton
@@ -230,7 +230,7 @@ export default function TcDashboard() {
         )}
 
         {!loading && error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-5 sm:p-6">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-red-700">
@@ -257,7 +257,7 @@ export default function TcDashboard() {
         {!loading &&
           !error &&
           campaigns.length === 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white px-5 py-12 text-center shadow-sm sm:px-8">
+            <div className="rounded-xl border border-gray-200 bg-white px-5 py-8 text-center shadow-sm">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -289,7 +289,7 @@ export default function TcDashboard() {
         {!loading &&
           !error &&
           campaigns.length > 0 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-5 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {campaigns.map(
                 (campaign, index) => (
                   <CampaingCard
@@ -310,25 +310,25 @@ export default function TcDashboard() {
 
 function DashboardStatCard({ title, value, subtitle, accent, icon }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className={`h-1.5 bg-gradient-to-r ${accent}`} />
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className={`h-1 bg-gradient-to-r ${accent}`} />
 
-      <div className="flex items-center justify-between p-4 sm:p-5">
+      <div className="flex items-center justify-between px-3.5 py-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-gray-400">
             {title}
           </p>
-          <h3 className="mt-3 text-2xl font-bold text-gray-800 sm:text-3xl">
+          <h3 className="mt-1 text-xl font-bold text-gray-800">
             {value}
           </h3>
         </div>
 
-        <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${accent} text-xl shadow-sm`}>
+        <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br ${accent} text-base shadow-sm`}>
           {icon}
         </div>
       </div>
 
-      <div className="border-t border-gray-100 px-4 py-3 text-sm text-gray-500 sm:px-5">
+      <div className="border-t border-gray-100 px-3.5 py-2 text-xs text-gray-500">
         {subtitle}
       </div>
     </div>
@@ -337,16 +337,16 @@ function DashboardStatCard({ title, value, subtitle, accent, icon }) {
 
 function DashboardCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="h-1.5 animate-pulse bg-gray-200" />
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="h-1 animate-pulse bg-gray-200" />
 
-      <div className="p-4 sm:p-5">
+      <div className="px-3.5 py-3">
         <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
 
-        <div className="mt-4 h-8 w-24 animate-pulse rounded bg-gray-200" />
+        <div className="mt-2 h-6 w-20 animate-pulse rounded bg-gray-200" />
       </div>
 
-      <div className="border-t border-gray-100 px-4 py-3">
+      <div className="border-t border-gray-100 px-3.5 py-2">
         <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
       </div>
     </div>
@@ -358,26 +358,26 @@ function CampaignSkeleton() {
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="h-[3px] animate-pulse bg-gray-200" />
 
-      <div className="p-5 sm:p-6">
-        <div className="h-5 w-40 animate-pulse rounded bg-gray-200" />
+      <div className="p-3.5">
+        <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
 
         <div className="mt-3 flex items-end gap-2">
-          <div className="h-9 w-20 animate-pulse rounded bg-gray-200" />
+          <div className="h-7 w-16 animate-pulse rounded bg-gray-200" />
           <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
         </div>
 
-        <div className="my-5 border-t border-gray-100" />
+        <div className="my-2.5 border-t border-gray-100" />
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="h-12 animate-pulse rounded-lg bg-gray-200" />
-          <div className="h-12 animate-pulse rounded-lg bg-gray-200" />
-          <div className="h-12 animate-pulse rounded-lg bg-gray-200" />
-          <div className="h-12 animate-pulse rounded-lg bg-gray-200" />
+          <div className="h-8 animate-pulse rounded-md bg-gray-200" />
+          <div className="h-8 animate-pulse rounded-md bg-gray-200" />
+          <div className="h-8 animate-pulse rounded-md bg-gray-200" />
+          <div className="h-8 animate-pulse rounded-md bg-gray-200" />
         </div>
 
-        <div className="mt-2 h-12 animate-pulse rounded-lg bg-gray-200" />
+        <div className="mt-1.5 h-8 animate-pulse rounded-md bg-gray-200" />
 
-        <div className="my-5 border-t border-gray-100" />
+        <div className="my-2.5 border-t border-gray-100" />
 
         <div className="mx-auto h-4 w-32 animate-pulse rounded bg-gray-200" />
       </div>

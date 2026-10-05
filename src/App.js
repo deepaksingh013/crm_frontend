@@ -33,7 +33,7 @@ const MainLayout = ({ children }) => {
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-[var(--bg)]">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)} />
-      <div className={`flex min-h-screen min-w-0 flex-col bg-[var(--bg)] transition-[margin] duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[82px]' : 'md:ml-[280px]'}`}>
+      <div className={`flex min-h-screen min-w-0 flex-col bg-[var(--bg)] transition-[margin] duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[5.125rem]' : 'md:ml-[17rem]'}`}>
         <Header
           sidebarOpen={sidebarOpen}
           sidebarCollapsed={sidebarCollapsed}
@@ -42,7 +42,7 @@ const MainLayout = ({ children }) => {
           }
         />
 
-        <main className="layout-main min-w-0 flex-1 px-4 pb-5 pt-[100px] sm:px-6 md:px-8 md:pb-7 md:pt-[108px]">
+        <main className="layout-main min-w-0 flex-1 px-3 pb-4 pt-[5.5rem] sm:px-5 md:px-6 md:pb-5 md:pt-[5.75rem]">
           <div className="mx-auto w-full max-w-[1600px]">
             {children}
           </div>
