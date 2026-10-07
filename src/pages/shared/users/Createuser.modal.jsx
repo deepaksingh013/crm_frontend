@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Check, ChevronDown, Eye, EyeOff } from 'lucide-react'
+import Cookies from 'js-cookie'
 import Modal from '../../../components/modal/Modal'
 
 const permissionOptions = [
@@ -27,6 +28,28 @@ const rolePermissionMap = {
     'reports',
   ],
   'Tele caller': ['leads', 'reports'],
+}
+
+const ROLE_OPTIONS = ['Manager', 'Team Leader', 'Tele caller']
+
+// Role hierarchy: which roles the logged-in user is allowed to create
+// admin -> everyone, manager -> TL + TC, TL -> TC only
+const getCreatableRoles = (currentRole) => {
+  const roleKey = String(currentRole || '').toLowerCase().trim()
+
+  if (roleKey === 'admin') {
+    return ROLE_OPTIONS
+  }
+
+  if (roleKey === 'manager') {
+    return ['Team Leader', 'Tele caller']
+  }
+
+  if (['tl', 'teamleader', 'team leader', 'team-leader', 'team_leader'].includes(roleKey)) {
+    return ['Tele caller']
+  }
+
+  return ['Tele caller']
 }
 
 const Createusermodal = ({
@@ -72,6 +95,14 @@ const Createusermodal = ({
     const allowed = rolePermissionMap[role] || []
     setPermissions(allowed)
   }, [role, setPermissions])
+
+  const creatableRoles = getCreatableRoles(Cookies.get('role'))
+
+  // When editing a user whose role is above the current user's level,
+  // still show that role (disabled) so the select displays the right value
+  const roleOptions = creatableRoles.includes(role) || !role
+    ? creatableRoles
+    : [role, ...creatableRoles]
 
   const availablePermissions = permissionOptions.filter(
     (option) =>
@@ -185,17 +216,15 @@ const Createusermodal = ({
               }
               className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,116,255,0.12)]"
             >
-              <option value="Manager">
-                Manager
-              </option>
-
-              <option value="Team Leader">
-                Team Leader
-              </option>
-
-              <option value="Tele caller">
-                Tele caller
-              </option>
+              {roleOptions.map((roleOption) => (
+                <option
+                  key={roleOption}
+                  value={roleOption}
+                  disabled={!creatableRoles.includes(roleOption)}
+                >
+                  {roleOption}
+                </option>
+              ))}
             </select>
           </label>
 
