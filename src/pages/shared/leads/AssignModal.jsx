@@ -4,17 +4,36 @@ import Cookies from 'js-cookie'
 
 const API_BASE_URL = process.env.REACT_APP_API_URL
 
-const isTelecallerUser = (user) => {
-  const role = String(user?.role || user?.userRole || '')
+const getUserRole = (user) =>
+  String(
+    user?.role ||
+    user?.userRole ||
+    user?.user?.role ||
+    user?.user?.userRole ||
+    ''
+  )
     .toLowerCase()
     .trim()
 
-  return (
-    role === 'tc' ||
-    role === 'telecaller' ||
-    role === 'tele caller' ||
-    role === 'tele-caller'
-  )
+// Leads can be assigned to every user except admins (telecallers, team leaders, managers)
+const isAssignableUser = (user) => getUserRole(user) !== 'admin'
+
+const ROLE_LABELS = {
+  tc: 'Tele Caller',
+  telecaller: 'Tele Caller',
+  'tele caller': 'Tele Caller',
+  'tele-caller': 'Tele Caller',
+  tl: 'Team Leader',
+  teamleader: 'Team Leader',
+  'team leader': 'Team Leader',
+  'team-leader': 'Team Leader',
+  team_leader: 'Team Leader',
+  manager: 'Manager',
+}
+
+const getRoleLabel = (user) => {
+  const role = getUserRole(user)
+  return ROLE_LABELS[role] || role
 }
 
 const AssignModal = ({
@@ -35,7 +54,7 @@ const AssignModal = ({
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState(null)
 
-  // Fetch TC users
+  // Fetch assignable users (telecallers, team leaders, managers)
   useEffect(() => {
     let mounted = true
 
@@ -98,9 +117,9 @@ const AssignModal = ({
           list = data.data.users
         }
 
-        const telecallers = list.filter(isTelecallerUser)
+        const assignableUsers = list.filter(isAssignableUser)
 
-        setUsers(telecallers)
+        setUsers(assignableUsers)
       } catch (err) {
         console.error('FETCH USERS ERROR:', err)
 
@@ -129,7 +148,7 @@ const AssignModal = ({
     }
   }, [open])
 
-  // Search/filter TC list
+  // Search/filter user list (by name, email or role)
   const filteredUsers = useMemo(() => {
     const search = searchTc.trim().toLowerCase()
 
@@ -147,8 +166,9 @@ const AssignModal = ({
       ).toLowerCase()
 
       const email = String(u?.email || '').toLowerCase()
+      const role = getRoleLabel(u).toLowerCase()
 
-      return name.includes(search) || email.includes(search)
+      return name.includes(search) || email.includes(search) || role.includes(search)
     })
   }, [users, searchTc])
 
@@ -263,14 +283,14 @@ const AssignModal = ({
         {/* Selected Leads Info */}
         {hasSelectedLeads && (
           <div className="mb-4 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3 text-sm text-[var(--text)]">
-            Assigning the selected leads to the chosen telecaller.
+            Assigning the selected leads to the chosen user.
           </div>
         )}
 
         {/* Select TC */}
         <div className="mb-4">
           <label className="mb-2 block text-sm text-[var(--muted)]">
-            Select TC
+            Assign to
           </label>
 
           {/* Search Input */}
@@ -283,7 +303,7 @@ const AssignModal = ({
                 setLocalError(null)
               }}
               disabled={isAssigning || usersLoading}
-              placeholder="Search TC by name..."
+              placeholder="Search by name, email or role..."
               className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 pr-10 text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none disabled:opacity-50"
             />
 
@@ -295,7 +315,7 @@ const AssignModal = ({
           {/* Loading */}
           {usersLoading ? (
             <div className="rounded-xl border border-[var(--border)] p-4 text-center text-sm text-[var(--muted)]">
-              Loading TC list...
+              Loading users...
             </div>
           ) : usersError ? (
             <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-500">
@@ -342,11 +362,19 @@ const AssignModal = ({
                             )}
                           </div>
 
-                          {isSelected && (
-                            <span className="shrink-0 text-sm font-semibold text-[var(--primary)]">
-                              Selected ✓
-                            </span>
-                          )}
+                          <div className="flex shrink-0 items-center gap-2">
+                            {getRoleLabel(u) && (
+                              <span className="rounded-full bg-[var(--surface-alt)] px-2 py-0.5 text-xs font-medium text-[var(--muted)]">
+                                {getRoleLabel(u)}
+                              </span>
+                            )}
+
+                            {isSelected && (
+                              <span className="text-sm font-semibold text-[var(--primary)]">
+                                Selected ✓
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </button>
                     )
@@ -354,14 +382,14 @@ const AssignModal = ({
                 </div>
               ) : (
                 <div className="rounded-xl border border-[var(--border)] p-4 text-center text-sm text-[var(--muted)]">
-                  No TC found for "{searchTc}"
+                  No user found for "{searchTc}"
                 </div>
               )}
 
               {/* Result Count */}
               {searchTc.trim() && filteredUsers.length > 0 && (
                 <div className="mt-2 text-xs text-[var(--muted)]">
-                  {filteredUsers.length} TC
+                  {filteredUsers.length} user
                   {filteredUsers.length === 1 ? '' : 's'} found
                 </div>
               )}
@@ -376,7 +404,7 @@ const AssignModal = ({
               disabled={isAssigning}
               className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-[var(--text)] focus:border-[var(--primary)] focus:outline-none disabled:opacity-50"
             >
-              <option value="">Select TC</option>
+              <option value="">Select user</option>
 
               {tcOptions.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -386,7 +414,7 @@ const AssignModal = ({
             </select>
           ) : (
             <div className="rounded-xl border border-[var(--border)] p-4 text-center text-sm text-[var(--muted)]">
-              No TC options available.
+              No users available.
             </div>
           )}
         </div>
@@ -395,7 +423,7 @@ const AssignModal = ({
         {selectedTcId && (
           <div className="mb-4 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3">
             <div className="text-xs text-[var(--muted)]">
-              Selected TC
+              Selected user
             </div>
 
             <div className="mt-1 font-medium text-[var(--text)]">

@@ -156,8 +156,8 @@ const getPaginationItems = (currentPage, pageCount) => {
   }, [])
 }
 
-const isTelecaller = (user) => {
-  const role = String(
+const getUserRole = (user) =>
+  String(
     user?.role ||
     user?.userRole ||
     user?.user?.role ||
@@ -167,12 +167,25 @@ const isTelecaller = (user) => {
     .toLowerCase()
     .trim()
 
-  return [
-    'tc',
-    'telecaller',
-    'tele caller',
-    'tele-caller',
-  ].includes(role)
+// Leads can be assigned to every user except admins (telecallers, team leaders, managers)
+const isAssignableUser = (user) => getUserRole(user) !== 'admin'
+
+const ROLE_LABELS = {
+  tc: 'Tele Caller',
+  telecaller: 'Tele Caller',
+  'tele caller': 'Tele Caller',
+  'tele-caller': 'Tele Caller',
+  tl: 'Team Leader',
+  teamleader: 'Team Leader',
+  'team leader': 'Team Leader',
+  'team-leader': 'Team Leader',
+  team_leader: 'Team Leader',
+  manager: 'Manager',
+}
+
+const getRoleLabel = (user) => {
+  const role = getUserRole(user)
+  return ROLE_LABELS[role] || role
 }
 
 const getUserId = (user) =>
@@ -192,7 +205,7 @@ const getUserName = (user) =>
   user?.user?.username ||
   user?.email ||
   user?.user?.email ||
-  'Unnamed telecaller'
+  'Unnamed user'
 
 const LeadDetails = () => {
   const dispatch = useDispatch()
@@ -311,7 +324,7 @@ const LeadDetails = () => {
           []
 
         const tcUsers = Array.isArray(users)
-          ? users.filter(isTelecaller)
+          ? users.filter(isAssignableUser)
           : []
 
         setTelecallers(tcUsers)
@@ -781,12 +794,16 @@ const LeadDetails = () => {
           return null
         }
 
+        const roleLabel =
+          getRoleLabel(
+            telecaller
+          )
+
         return {
           id,
-          name:
-            getUserName(
-              telecaller
-            ),
+          name: roleLabel
+            ? `${getUserName(telecaller)} (${roleLabel})`
+            : getUserName(telecaller),
         }
       })
       .filter(Boolean)
@@ -1154,7 +1171,7 @@ const LeadDetails = () => {
                     <option value="">
                       {telecallersLoading
                         ? 'Loading TC...'
-                        : 'All Telecallers'}
+                        : 'All Users'}
                     </option>
 
                     {telecallers.map(
@@ -1178,6 +1195,9 @@ const LeadDetails = () => {
                             {getUserName(
                               telecaller
                             )}
+                            {getRoleLabel(telecaller)
+                              ? ` (${getRoleLabel(telecaller)})`
+                              : ''}
                           </option>
                         ) : null
                       }
@@ -1201,7 +1221,7 @@ const LeadDetails = () => {
 
                       resetToFirstPage()
                     }}
-                    title="Clear telecaller filter"
+                    title="Clear user filter"
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-alt)] hover:text-[var(--text)]"
                   >
                     <RotateCcw
