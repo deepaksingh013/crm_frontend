@@ -17,7 +17,7 @@ const reverseRoleMap = Object.fromEntries(
     Object.entries(roleMap).map(([key, value]) => [value, key])
 );
 
-const DeviceManagment = () => {
+const UserApproval = () => {
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -106,7 +106,7 @@ const DeviceManagment = () => {
                     Authorization: `Bearer ${token}`,
                 },
             })
-            toast.success("User approved successfully!" || successMessage)
+            toast.success(successMessage)
             closeConfirmationModal()
         } catch (err) {
             console.error(`Error ${action} user:`, err)
@@ -152,14 +152,13 @@ const DeviceManagment = () => {
                 <button
                     onClick={() => openConfirmationModal(user)}
                     type="button"
-                    disabled={user.isApproved}
                     className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${user.isApproved
-                        ? 'cursor-not-allowed bg-gray-400 opacity-60'
+                        ? 'bg-red-600 hover:bg-red-700 hover:shadow-md focus:ring-red-500 active:scale-[0.98]'
                         : 'bg-emerald-600 hover:bg-emerald-700 hover:shadow-md focus:ring-emerald-500 active:scale-[0.98]'
                         }`}
                 >
-                    <Check className="h-4 w-4" />
-                    {user.isApproved ? "Approved" : "Approve"}
+                    {user.isApproved ? <AlertCircle className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                    {user.isApproved ? 'Block' : 'Approve'}
                 </button>
 
 
@@ -177,9 +176,9 @@ const DeviceManagment = () => {
                 {/* Header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">Device Management</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">User Approval</h1>
                         <p className="mt-1 text-sm text-[var(--muted)]">
-                            Manage your all devices.
+                            Review and approve team members who need access.
                         </p>
                     </div>
                 </div>
@@ -229,4 +228,4 @@ const DeviceManagment = () => {
     )
 }
 
-export default DeviceManagment
+export default UserApproval

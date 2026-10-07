@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { useDispatch } from "react-redux";
+import { setUserFromCookies } from "../../features/auth/authSlice";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -19,20 +21,26 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
 
   const getDashboardRoute = (role) => {
     switch (role?.toLowerCase()) {
       case "admin":
-        return "/users";
+        return "/dashboard";
 
       case "manager":
-        return "/commingsoon";
+        return "/manager/dashboard";
 
       case "tl":
-        return "/commingsoon";
+      case "teamleader":
+      case "team leader":
+        return "/tl/dashboard";
 
       case "tc":
+      case "telecaller":
+      case "tele caller":
+      case "tele-caller":
         return "/tc/dashboard";
 
       default:
@@ -112,7 +120,7 @@ const Auth = () => {
 
         return;
       }
-      const userRole = data?.user.role?.toLowerCase();
+      const userRole = data?.user?.role?.toLowerCase();
 
       console.log("User Role:", userRole);
 
@@ -142,6 +150,16 @@ const Auth = () => {
         secure: window.location.protocol === "https:",
         sameSite: "lax",
       });
+      Cookies.set(
+        "user",
+        JSON.stringify(data.user || { email: trimmedEmail, role: userRole }),
+        {
+          expires: 7,
+          secure: window.location.protocol === "https:",
+          sameSite: "lax",
+        }
+      );
+      dispatch(setUserFromCookies());
       toast.success("Login successful!", {
         id: toastId,
       });

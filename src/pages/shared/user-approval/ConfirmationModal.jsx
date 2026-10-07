@@ -18,7 +18,7 @@ const ConfirmationModal = ({ isOpen, user, onClose, onConfirm, isSubmitting }) =
         >
             <div
                 className="relative w-full max-w-md transform rounded-2xl bg-white p-6 text-left shadow-xl transition-all"
-                onClick={(e) => e.stopPropagation()} // Prevent closing modal when clicking inside
+                onClick={(e) => e.stopPropagation()} // Keep clicks inside the dialog from dismissing it.
             >
                 <div className="flex items-start">
                     <div className="mt-0 text-left">

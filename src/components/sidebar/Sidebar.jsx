@@ -1,13 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation, } from 'react-router-dom'
-import { Users2, ListCheck, Podium, X, ChevronLeft, ChevronRight, MonitorCog, LogOut, CircleUser, } from 'lucide-react'
+import { Users2, ListCheck, Podium, X, ChevronLeft, ChevronRight, CheckCircle2, LogOut, CircleUser, } from 'lucide-react'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 import ConfirmationModal from './ConfirmationModal'
+import { useAuth } from '../../hooks/useAuth'
 
 const API_URL = process.env.REACT_APP_API_URL
 
 const ADMIN_MENU = [
+  {
+    label: 'Dashboard',
+    path: '/dashboard',
+    icon: Podium,
+    permission: 'dashboard',
+  },
   {
     label: 'User Management',
     path: '/users',
@@ -33,54 +40,29 @@ const ADMIN_MENU = [
     permission: 'telecallers',
   },
   {
-    label: 'Device Management',
-    path: '/devices',
-    icon: MonitorCog,
-    permission: 'devices',
+    label: 'User Approval',
+    path: '/user-approval',
+    icon: CheckCircle2,
+    permission: 'userApproval',
+  },
+  {
+    label: 'Reports',
+    path: '/reports',
+    icon: ListCheck,
+    permission: 'reports',
   },
 ]
 
-const MANAGER_MENU = [
-  {
-    label: 'User Management',
-    path: '/commingsoon',
-    icon: Users2,
-    permission: 'users',
-  },
-  {
-    label: 'Campaigns',
-    path: '/commingsoon',
-    icon: Podium,
-    permission: 'campaigns',
-  },
-  {
-    label: 'Leads',
-    path: '/commingsoon',
-    icon: ListCheck,
-    permission: 'leads',
-  },
-  {
-    label: 'Device Management',
-    path: '/commingsoon',
-    icon: MonitorCog,
-    permission: 'devices',
-  },
-]
-
-const TL_MENU = [
-  {
-    label: 'Campaigns',
-    path: '/commingsoon',
-    icon: Podium,
-    permission: 'campaigns',
-  },
-  {
-    label: 'Leads',
-    path: '/commingsoon',
-    icon: ListCheck,
-    permission: 'leads',
-  },
-]
+const MANAGER_MENU = ADMIN_MENU.map((item) =>
+  item.permission === 'dashboard'
+    ? { ...item, path: '/manager/dashboard' }
+    : item
+)
+const TL_MENU = ADMIN_MENU.map((item) =>
+  item.permission === 'dashboard'
+    ? { ...item, path: '/tl/dashboard' }
+    : item
+)
 
 const SALES_STATUS_MENU = [
   { id: 'pending', name: 'Pending', value: 'pending' },
@@ -120,6 +102,7 @@ const Sidebar = ({
   onToggleCollapse,
 }) => {
   const location = useLocation()
+  const { role: authRole } = useAuth()
   const [user, setUser] = useState(null)
   const [salesMenuOpen, setSalesMenuOpen] = useState(false)
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
@@ -180,7 +163,7 @@ const Sidebar = ({
 
   // Menu based on user role
   const navItems = useMemo(() => {
-    const role = user?.role?.toLowerCase()
+    const role = String(user?.role || authRole || '').toLowerCase()
 
     if (role === 'admin') {
       return ADMIN_MENU
@@ -190,7 +173,7 @@ const Sidebar = ({
       return MANAGER_MENU
     }
 
-    if (role === 'tl') {
+    if (role === 'tl' || role === 'teamleader' || role === 'team leader') {
       return TL_MENU
     }
 
@@ -213,7 +196,7 @@ const Sidebar = ({
     }
 
     return ROLE_MENUS[role] || []
-  }, [salesTarget.campaignId, user?.role])
+  }, [authRole, salesTarget.campaignId, user?.role])
 
   // Logout
   const handleConfirmLogout = async () => {

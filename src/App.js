@@ -10,21 +10,45 @@ import Unauthorized from './components/Unauthorized'
 import Sidebar from './components/sidebar/Sidebar'
 import Header from './components/header/Header'
 
-import Dashboard from './pages/admin/dashboard/Dashboard'
-import UserManagement from './pages/admin/userManagment/UserManagement'
-import CampaignManagment from './pages/admin/campaignManagment/CampaignManagment'
-import LeadDetails from './pages/admin/leadManagment/LeadDetails'
-import Leadmanagment from './pages/admin/leadManagment/Leadmanagment'
-import GlobalLeadSearch from './pages/admin/leadManagment/GlobalLeadSearch'
-import Report from './pages/admin/reports/Report'
+import Dashboard from './pages/admin/Dashboard'
+import UserManagement from './pages/shared/users/UserManagement'
+import CampaignManagment from './pages/shared/campaigns/CampaignManagment'
+import LeadDetails from './pages/shared/leads/LeadDetails'
+import Leadmanagment from './pages/shared/leads/Leadmanagment'
+import GlobalLeadSearch from './pages/shared/leads/GlobalLeadSearch'
+import Report from './pages/shared/reports/Report'
 
 import { setUserFromCookies } from './features/auth/authSlice'
 import CommingSoon from './components/CommingSoon'
 import TcDashboard from './pages/telecaller/dashboard/Dashboard'
-import SalesManagment from './pages/telecaller/salesManagment/SalesManagment'
-import TcList from './pages/admin/telecallerList/TcList'
-import TcDetails from './pages/admin/telecallerList/TcDetails'
-import DeviceManagment from './pages/admin/deviceManagment/DeviceManagment'
+import SalesManagment from './pages/telecaller/sales-management/SalesManagment'
+import TcList from './pages/shared/telecallers/TcList'
+import TcDetails from './pages/shared/telecallers/TcDetails'
+import UserApproval from './pages/shared/user-approval/UserApproval'
+import ManagerDashboard from './pages/manager/Dashboard'
+import TeamLeaderDashboard from './pages/team-leader/Dashboard'
+import { useAuth } from './hooks/useAuth'
+
+const RoleDashboard = () => {
+  const { role } = useAuth()
+
+  switch (role?.toLowerCase()) {
+    case 'manager':
+      return <ManagerDashboard />
+    case 'tl':
+    case 'teamleader':
+    case 'team leader':
+      return <TeamLeaderDashboard />
+    case 'tc':
+    case 'telecaller':
+    case 'tele caller':
+    case 'tele-caller':
+    case 'agent':
+      return <TcDashboard />
+    default:
+      return <Dashboard />
+  }
+}
 
 const MainLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -76,7 +100,7 @@ function App() {
             path="/"
             element={
               <MainLayout>
-                <Dashboard />
+                <RoleDashboard />
               </MainLayout>
             }
           />
@@ -85,7 +109,23 @@ function App() {
             path="/dashboard"
             element={
               <MainLayout>
-                <Dashboard />
+                <RoleDashboard />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/manager/dashboard"
+            element={
+              <MainLayout>
+                <RoleDashboard />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/tl/dashboard"
+            element={
+              <MainLayout>
+                <RoleDashboard />
               </MainLayout>
             }
           />
@@ -146,12 +186,16 @@ function App() {
             }
           />
           <Route
-            path="/devices"
+            path="/user-approval"
             element={
               <MainLayout>
-                <DeviceManagment />
+                <UserApproval />
               </MainLayout>
             }
+          />
+          <Route
+            path="/devices"
+            element={<Navigate to="/user-approval" replace />}
           />
           <Route
             path="/reports"

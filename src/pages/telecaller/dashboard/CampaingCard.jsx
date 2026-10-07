@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import {createSalesManagementRoute,} from "../salesManagment/salesManagementRoutes";
+import {createSalesManagementRoute,} from "../sales-management/salesManagementRoutes";
 
 const CampaignCard = ({ campaign }) => {
   const navigate = useNavigate();

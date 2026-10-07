@@ -37,19 +37,15 @@ const UserManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
-
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
-
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('Tele caller')
   const [status, setStatus] = useState("active")
   const [permissions, setPermissions] = useState(['leads', 'reports'])
-  // const [isActive, setIsActive] = useState(true) 
-  console.log(status)
 
   const fetchUsers = useCallback(async () => {
     const token = Cookies.get('token')
@@ -70,19 +66,18 @@ const UserManagement = () => {
       })
 
       if (response.data?.success) {
-        const telecallerUsers = (response.data.users || []).filter(isTelecallerUser)
+        const userList = Array.isArray(response.data.users)
+          ? response.data.users
+          : []
 
-        setUsers(
-          telecallerUsers.map((user) => ({
-            ...user,
-            id: user._id,
-          }))
-        )
+        setUsers(userList.map((user) => ({
+          ...user,
+          id: user.id || user._id,
+        })))
       } else {
-        setError('Failed to fetch users')
+        setError(response.data?.message || 'Failed to fetch users')
       }
     } catch (err) {
-      console.error('Get users error:', err)
       setError(err.response?.data?.message || 'Failed to fetch users')
     } finally {
       setLoading(false)
@@ -172,7 +167,6 @@ const UserManagement = () => {
     const roleKey = Object.keys(roleMap).find(key => roleMap[key] === user.role) || 'Tele caller';
     setRole(roleKey)
     setPermissions(user.permissions || [])
-    // setIsActive(user.isActive)
     setIsModalOpen(true)
   }
 
@@ -360,15 +354,6 @@ const UserManagement = () => {
           >
             <Trash2 size={18} />
           </button>
-
-          {/* TOGGLE STATUS */}
-          {/* <button
-            type="button"
-            onClick={() => handleToggleStatus(user)}
-            className={`inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-95 ${user.isActive ? 'border-orange-200 text-orange-500 hover:bg-orange-50' : 'border-green-200 text-green-600 hover:bg-green-50'}`}
-          >
-            {user.isActive ? 'Block' : 'Activate'}
-          </button> */}
         </div>
       ),
     },

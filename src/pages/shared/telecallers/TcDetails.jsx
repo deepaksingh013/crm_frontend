@@ -4,7 +4,7 @@ import TableSkeleton from '../../../components/table/TableSkeleton'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import AssignModal from '../leadManagment/AssignModal'
+import AssignModal from '../leads/AssignModal'
 
 const API_URL = process.env.REACT_APP_API_URL
 const PAGE_SIZE = 10
