@@ -9,12 +9,12 @@ import { useAuth } from '../../hooks/useAuth'
 const API_URL = process.env.REACT_APP_API_URL
 
 const ADMIN_MENU = [
-  {
-    label: 'Dashboard',
-    path: '/dashboard',
-    icon: Podium,
-    permission: 'dashboard',
-  },
+  // {
+  //   label: 'Dashboard',
+  //   path: '/dashboard',
+  //   icon: Podium,
+  //   permission: 'dashboard',
+  // },
   {
     label: 'User Management',
     path: '/users',
@@ -45,24 +45,67 @@ const ADMIN_MENU = [
     icon: CheckCircle2,
     permission: 'userApproval',
   },
-  {
-    label: 'Reports',
-    path: '/reports',
-    icon: ListCheck,
-    permission: 'reports',
-  },
+  // {
+  //   label: 'Reports',
+  //   path: '/reports',
+  //   icon: ListCheck,
+  //   permission: 'reports',
+  // },
 ]
 
-const MANAGER_MENU = ADMIN_MENU.map((item) =>
-  item.permission === 'dashboard'
-    ? { ...item, path: '/manager/dashboard' }
-    : item
-)
-const TL_MENU = ADMIN_MENU.map((item) =>
-  item.permission === 'dashboard'
-    ? { ...item, path: '/tl/dashboard' }
-    : item
-)
+const MANAGER_MENU = [
+  {
+    label: 'User Management',
+    path: '/users',
+    icon: Users2,
+    permission: 'users',
+  },
+  {
+    label: 'Leads',
+    path: '/leads',
+    icon: ListCheck,
+    permission: 'leads',
+  },
+  {
+    label: 'Telecaller List',
+    path: '/telecallers',
+    icon: CircleUser,
+    permission: 'telecallers',
+  },
+  {
+    label: 'User Approval',
+    path: '/user-approval',
+    icon: CheckCircle2,
+    permission: 'userApproval',
+  },
+
+]
+const TL_MENU = [
+{
+    label: 'User Management',
+    path: '/users',
+    icon: Users2,
+    permission: 'users',
+  },
+  {
+    label: 'Leads',
+    path: '/leads',
+    icon: ListCheck,
+    permission: 'leads',
+  },
+  {
+    label: 'Telecaller List',
+    path: '/telecallers',
+    icon: CircleUser,
+    permission: 'telecallers',
+  },
+  {
+    label: 'User Approval',
+    path: '/user-approval',
+    icon: CheckCircle2,
+    permission: 'userApproval',
+  },
+]
 
 const SALES_STATUS_MENU = [
   { id: 'pending', name: 'Pending', value: 'pending' },

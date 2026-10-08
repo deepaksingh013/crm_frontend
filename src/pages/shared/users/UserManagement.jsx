@@ -5,7 +5,7 @@ import axios from 'axios'
 import DeleteConfirmModal from './DeleteConfirmModal'
 import Cookies from 'js-cookie'
 import toast from 'react-hot-toast'
-import { Edit, Trash2, Plus, AlertCircle } from 'lucide-react'
+import { Edit, Trash2, Plus, AlertCircle, Filter } from 'lucide-react'
 
 const API_URL = process.env.REACT_APP_API_URL
 
@@ -19,6 +19,16 @@ const reverseRoleMap = Object.fromEntries(
   Object.entries(roleMap).map(([key, value]) => [value, key])
 );
 
+const normalizeUserRole = (user) => {
+  const role = String(user?.role || user?.userRole || '').toLowerCase().trim()
+
+  if (role === 'manager') return 'manager'
+  if (['tl', 'teamleader', 'team leader', 'team-leader', 'team_leader'].includes(role)) return 'tl'
+  if (['tc', 'telecaller', 'tele caller', 'tele-caller'].includes(role)) return 'tc'
+
+  return role
+}
+
 const isTelecallerUser = (user) => {
   const role = String(user?.role || user?.userRole || '').toLowerCase()
 
@@ -31,7 +41,17 @@ const isTelecallerUser = (user) => {
 }
 
 const UserManagement = () => {
+  const currentRole = String(Cookies.get('role') || '').toLowerCase().trim()
+  const canManageUsers = ['admin', 'manager'].includes(currentRole)
+  const roleFilterOptions = currentRole === 'admin'
+    ? [
+      { label: 'Manager', value: 'manager' },
+      { label: 'Team Leader', value: 'tl' },
+      { label: 'Tele caller', value: 'tc' },
+    ]
+    : [{ label: 'Team Leader', value: 'tl' }, { label: 'Tele caller', value: 'tc' }]
   const [users, setUsers] = useState([])
+  const [roleFilter, setRoleFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -46,6 +66,10 @@ const UserManagement = () => {
   const [role, setRole] = useState('Tele caller')
   const [status, setStatus] = useState("active")
   const [permissions, setPermissions] = useState(['leads', 'reports'])
+
+  const filteredUsers = roleFilter === 'all'
+    ? users
+    : users.filter((user) => normalizeUserRole(user) === roleFilter)
 
   const fetchUsers = useCallback(async () => {
     const token = Cookies.get('token')
@@ -327,36 +351,34 @@ const UserManagement = () => {
       },
     },
 
-    // ACTIONS
-    {
-      header: 'Actions',
-      accessor: 'actions',
+    ...(canManageUsers
+      ? [{
+        header: 'Actions',
+        accessor: 'actions',
+        render: (_, user) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              title="Edit User"
+              onClick={() => handleEditUser(user)}
+              className="rounded-lg p-1.5 text-gray-500 transition hover:bg-amber-50 hover:text-amber-600"
+            >
+              <Edit size={18} />
+            </button>
 
-      render: (_, user) => (
-        <div className="flex flex-wrap items-center gap-2">
-          {/* EDIT */}
-          <button
-            type="button"
-            title="Edit User"
-            onClick={() => handleEditUser(user)}
-            className="rounded-lg p-1.5 text-gray-500 transition hover:bg-amber-50 hover:text-amber-600"
-          >
-            <Edit size={18} />
-          </button>
-
-          {/* DELETE */}
-          <button
-            type="button"
-            title="Delete User"
-            onClick={() => openDeleteModal(user)}
-            disabled={!user.isActive}
-            className="rounded-lg p-1.5 text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Trash2 size={18} />
-          </button>
-        </div>
-      ),
-    },
+            <button
+              type="button"
+              title="Delete User"
+              onClick={() => openDeleteModal(user)}
+              disabled={!user.isActive}
+              className="rounded-lg p-1.5 text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        ),
+      }]
+      : []),
   ]
 
 
@@ -371,16 +393,47 @@ const UserManagement = () => {
               Create, edit, and manage your team members.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => { setEditingUser(null); resetForm(); setIsModalOpen(true); }}
-            disabled={loading || isSubmitting}
-            className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 active:scale-95 disabled:opacity-50"
-          >
-            <Plus size={18} />
-            Create User
-          </button>
+          {canManageUsers && (
+            <button
+              type="button"
+              onClick={() => { setEditingUser(null); resetForm(); setIsModalOpen(true); }}
+              disabled={loading || isSubmitting}
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 active:scale-95 disabled:opacity-50"
+            >
+              <Plus size={18} />
+              Create User
+            </button>
+          )}
         </div>
+
+        {canManageUsers && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-alt)] text-[var(--primary)]">
+                <Filter size={18} />
+              </span>
+              <div>
+                <label htmlFor="user-role-filter" className="block text-sm font-semibold text-[var(--text)]">
+                  Filter users
+                </label>
+                <p className="mt-0.5 text-xs text-[var(--muted)]">
+                  {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'} shown
+                </p>
+              </div>
+            </div>
+            <select
+              id="user-role-filter"
+              value={roleFilter}
+              onChange={(event) => setRoleFilter(event.target.value)}
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-2.5 text-sm font-medium text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,116,255,0.12)] sm:w-56"
+            >
+              <option value="all">All roles</option>
+              {roleFilterOptions.map(({ label, value }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && !loading && (
@@ -394,7 +447,7 @@ const UserManagement = () => {
         <div className="rounded-2xl shadow-sm">
           <DynamicTable
             columns={columns}
-            data={users}
+            data={filteredUsers}
             isLoading={loading}
           />
         </div>
