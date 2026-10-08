@@ -9,6 +9,7 @@ import { useDispatch } from 'react-redux'
 import { apiGet, apiPost } from '../../../redux/apiMethods'
 import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
+import { useIsAdmin } from '../../../hooks/useAuth'
 
 const API_BASE_URL = process.env.REACT_APP_API_URL
 const PAGE_SIZE = 10
@@ -211,6 +212,7 @@ const getUserName = (user) =>
 
 const LeadDetails = () => {
   const dispatch = useDispatch()
+  const isAdmin = useIsAdmin()
   const { id: campaignId } = useParams()
   const location = useLocation()
 
@@ -262,16 +264,16 @@ const LeadDetails = () => {
   const [totalPages, setTotalPages] =
     useState(1)
 
+  const [isLeadUpdateModalOpen, setIsLeadUpdateModalOpen] =
+    useState(false)
+  const [leadToUpdate, setLeadToUpdate] = useState(null)
+
   // Import
   const [isImportModalOpen, setIsImportModalOpen] =
     useState(false)
 
   const [isImporting, setIsImporting] =
     useState(false)
-
-  // Update lead (status / details) - open to every role
-  const [leadToUpdate, setLeadToUpdate] =
-    useState(null)
 
   // Assign
   const [isAssignModalOpen, setIsAssignModalOpen] =
@@ -605,6 +607,10 @@ const LeadDetails = () => {
     page,
   ])
 
+  const handleLeadUpdateSuccess = useCallback(() => {
+    setSelectedLeadIds([])
+    fetchLeads()
+  }, [fetchLeads])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -1070,21 +1076,20 @@ const LeadDetails = () => {
 
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
 
-          {/* IMPORT */}
-          <button type="button" onClick={() => setIsImportModalOpen( true )}
-            disabled={ isImporting}
-            className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
-          >
-            {isImporting ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <Upload size={15} />
+          {isAdmin && (
+            <button type="button" onClick={() => setIsImportModalOpen(true)}
+              disabled={isImporting}
+              className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+            >
+              {isImporting ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Upload size={15} />
               )}
 
-            {isImporting
-              ? 'Importing...'
-              : 'Import Leads'}
-          </button>
+              {isImporting ? 'Importing...' : 'Import Leads'}
+            </button>
+          )}
 
           <Link to="/leads" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:bg-[var(--surface-alt)]">
             <ArrowLeft size={15} />
@@ -1277,24 +1282,26 @@ const LeadDetails = () => {
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTargetCampaignId('')
-                    setTransferCount('1')
-                    setIsTransferModalOpen(true)
-                  }}
-                  disabled={isTransferring}
-                  className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:border-[var(--primary)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ArrowRightLeft size={15} />
-                  Transfer Leads
-                  {selectedLeadCount > 0 && (
-                    <span className="rounded-full bg-blue-50 px-1.5 py-px text-xs text-[var(--primary)]">
-                      {selectedLeadCount}
-                    </span>
-                  )}
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTargetCampaignId('')
+                      setTransferCount('1')
+                      setIsTransferModalOpen(true)
+                    }}
+                    disabled={isTransferring}
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:border-[var(--primary)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ArrowRightLeft size={15} />
+                    Transfer Leads
+                    {selectedLeadCount > 0 && (
+                      <span className="rounded-full bg-blue-50 px-1.5 py-px text-xs text-[var(--primary)]">
+                        {selectedLeadCount}
+                      </span>
+                    )}
+                  </button>
+                )}
 
                 {/* ASSIGN */}
                 <button
@@ -1617,7 +1624,10 @@ const LeadDetails = () => {
                         <td data-label="Action" className="px-3 py-2">
                           <button
                             type="button"
-                            onClick={() => setLeadToUpdate(row)}
+                            onClick={() => {
+                              setLeadToUpdate(row)
+                              setIsLeadUpdateModalOpen(true)
+                            }}
                             className="app-table-btn"
                           >
                             Update
@@ -1706,15 +1716,6 @@ const LeadDetails = () => {
           </div>
         </div>
       )}
-      <LeadStatusUpdateModal
-        isOpen={!!leadToUpdate}
-        lead={leadToUpdate}
-        onClose={() => setLeadToUpdate(null)}
-        // fetchLeads takes an AbortSignal, so don't pass the response through
-        onUpdateSuccess={() => fetchLeads()}
-        campaignId={campaignId}
-      />
-
       <AssignModal
         open={
           isAssignModalOpen
@@ -1741,7 +1742,7 @@ const LeadDetails = () => {
         }
       />
 
-      <Modal
+      {isAdmin && <Modal
         open={isTransferModalOpen}
         title="Transfer leads to another campaign"
         size="md"
@@ -1845,9 +1846,9 @@ const LeadDetails = () => {
             </button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
 
-      <ImportCampaignModal
+      {isAdmin && <ImportCampaignModal
         open={
           isImportModalOpen
         }
@@ -1865,6 +1866,17 @@ const LeadDetails = () => {
         isLoading={
           isImporting
         }
+      />}
+
+      <LeadStatusUpdateModal
+        isOpen={isLeadUpdateModalOpen}
+        lead={leadToUpdate}
+        campaignId={campaignId}
+        onClose={() => {
+          setIsLeadUpdateModalOpen(false)
+          setLeadToUpdate(null)
+        }}
+        onUpdateSuccess={handleLeadUpdateSuccess}
       />
 
     </div>

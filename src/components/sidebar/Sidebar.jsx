@@ -8,6 +8,14 @@ import { useAuth } from '../../hooks/useAuth'
 
 const API_URL = process.env.REACT_APP_API_URL
 
+// Team lead report - admin, manager and TL (not TC)
+const REPORTS_ITEM = {
+  label: 'Reports',
+  path: '/reports',
+  icon: Network,
+  permission: 'reports',
+}
+
 // Dashboard is hidden for now (static page).
 // After login admin / manager / TL land on the first item here.
 // Telecallers use AGENT_MENU, so Reports never shows for them.
@@ -48,24 +56,63 @@ const ADMIN_MENU = [
     icon: CheckCircle2,
     permission: 'userApproval',
   },
-  {
-    label: 'Reports',
-    path: '/reports',
-    icon: Network,
-    permission: 'reports',
-  },
+  REPORTS_ITEM,
 ]
 
-const MANAGER_MENU = ADMIN_MENU.map((item) =>
-  item.permission === 'dashboard'
-    ? { ...item, path: '/manager/dashboard' }
-    : item
-)
-const TL_MENU = ADMIN_MENU.map((item) =>
-  item.permission === 'dashboard'
-    ? { ...item, path: '/tl/dashboard' }
-    : item
-)
+const MANAGER_MENU = [
+  {
+    label: 'User Management',
+    path: '/users',
+    icon: Users2,
+    permission: 'users',
+  },
+  {
+    label: 'Leads',
+    path: '/leads',
+    icon: ListCheck,
+    permission: 'leads',
+  },
+  {
+    label: 'Telecaller List',
+    path: '/telecallers',
+    icon: CircleUser,
+    permission: 'telecallers',
+  },
+  {
+    label: 'User Approval',
+    path: '/user-approval',
+    icon: CheckCircle2,
+    permission: 'userApproval',
+  },
+  REPORTS_ITEM,
+]
+const TL_MENU = [
+{
+    label: 'User Management',
+    path: '/users',
+    icon: Users2,
+    permission: 'users',
+  },
+  {
+    label: 'Leads',
+    path: '/leads',
+    icon: ListCheck,
+    permission: 'leads',
+  },
+  {
+    label: 'Telecaller List',
+    path: '/telecallers',
+    icon: CircleUser,
+    permission: 'telecallers',
+  },
+  {
+    label: 'User Approval',
+    path: '/user-approval',
+    icon: CheckCircle2,
+    permission: 'userApproval',
+  },
+  REPORTS_ITEM,
+]
 
 const SALES_STATUS_MENU = [
   { id: 'pending', name: 'Pending', value: 'pending' },

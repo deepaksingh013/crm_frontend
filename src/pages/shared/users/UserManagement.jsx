@@ -6,7 +6,7 @@ import DeleteConfirmModal from './DeleteConfirmModal'
 import ReportsToCell, { getId } from './ReportsToCell'
 import Cookies from 'js-cookie'
 import toast from 'react-hot-toast'
-import { Edit, Trash2, Plus, AlertCircle } from 'lucide-react'
+import { Edit, Trash2, Plus, AlertCircle, Filter } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
 
 const API_URL = process.env.REACT_APP_API_URL
@@ -21,6 +21,16 @@ const reverseRoleMap = Object.fromEntries(
   Object.entries(roleMap).map(([key, value]) => [value, key])
 );
 
+const normalizeUserRole = (user) => {
+  const role = String(user?.role || user?.userRole || '').toLowerCase().trim()
+
+  if (role === 'manager') return 'manager'
+  if (['tl', 'teamleader', 'team leader', 'team-leader', 'team_leader'].includes(role)) return 'tl'
+  if (['tc', 'telecaller', 'tele caller', 'tele-caller'].includes(role)) return 'tc'
+
+  return role
+}
+
 const isTelecallerUser = (user) => {
   const role = String(user?.role || user?.userRole || '').toLowerCase()
 
@@ -33,9 +43,20 @@ const isTelecallerUser = (user) => {
 }
 
 const UserManagement = () => {
-  const { role: currentRole } = useAuth()
-  const isAdmin = String(currentRole || '').toLowerCase() === 'admin'
+  const { role: authRole } = useAuth()
+  const currentRole = String(authRole || '').toLowerCase().trim()
+  const isAdmin = currentRole === 'admin'
+  // Only admin / manager can create, edit or delete users
+  const canManageUsers = ['admin', 'manager'].includes(currentRole)
+  const roleFilterOptions = currentRole === 'admin'
+    ? [
+      { label: 'Manager', value: 'manager' },
+      { label: 'Team Leader', value: 'tl' },
+      { label: 'Tele caller', value: 'tc' },
+    ]
+    : [{ label: 'Team Leader', value: 'tl' }, { label: 'Tele caller', value: 'tc' }]
   const [users, setUsers] = useState([])
+  const [roleFilter, setRoleFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -262,19 +283,26 @@ const UserManagement = () => {
     [users]
   )
 
+  // Team filter (admin) and role filter both apply
   const visibleUsers = useMemo(() => {
-    if (teamFilter === 'all') return users
+    let list = users
 
     if (teamFilter === 'direct') {
-      return users.filter(
+      list = list.filter(
         (user) => ['tl', 'tc'].includes(user.role) && !getId(user.manager)
+      )
+    } else if (teamFilter !== 'all') {
+      list = list.filter(
+        (user) => getId(user) === teamFilter || getId(user.manager) === teamFilter
       )
     }
 
-    return users.filter(
-      (user) => getId(user) === teamFilter || getId(user.manager) === teamFilter
-    )
-  }, [users, teamFilter])
+    if (roleFilter !== 'all') {
+      list = list.filter((user) => normalizeUserRole(user) === roleFilter)
+    }
+
+    return list
+  }, [users, teamFilter, roleFilter])
 
   const columns = [
     {
@@ -321,36 +349,35 @@ const UserManagement = () => {
       ),
     },
 
-    // ACTIONS
-    {
-      header: 'Actions',
-      accessor: 'actions',
+    // ACTIONS (admin / manager only)
+    ...(canManageUsers
+      ? [{
+        header: 'Actions',
+        accessor: 'actions',
+        render: (_, user) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              title="Edit User"
+              onClick={() => handleEditUser(user)}
+              className="rounded-lg p-1.5 text-gray-500 transition hover:bg-amber-50 hover:text-amber-600"
+            >
+              <Edit size={18} />
+            </button>
 
-      render: (_, user) => (
-        <div className="flex flex-wrap items-center gap-2">
-          {/* EDIT */}
-          <button
-            type="button"
-            title="Edit User"
-            onClick={() => handleEditUser(user)}
-            className="rounded-lg p-1.5 text-gray-500 transition hover:bg-amber-50 hover:text-amber-600"
-          >
-            <Edit size={18} />
-          </button>
-
-          {/* DELETE */}
-          <button
-            type="button"
-            title={user.role === 'admin' ? 'Admin cannot be deleted' : 'Delete User'}
-            onClick={() => openDeleteModal(user)}
-            disabled={user.role === 'admin'}
-            className="rounded-lg p-1.5 text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Trash2 size={18} />
-          </button>
-        </div>
-      ),
-    },
+            <button
+              type="button"
+              title={user.role === 'admin' ? 'Admin cannot be deleted' : 'Delete User'}
+              onClick={() => openDeleteModal(user)}
+              disabled={user.role === 'admin'}
+              className="rounded-lg p-1.5 text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        ),
+      }]
+      : []),
   ]
 
 
@@ -365,45 +392,72 @@ const UserManagement = () => {
               Create, edit, and manage your team members.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => { setEditingUser(null); resetForm(); setIsModalOpen(true); }}
-            disabled={loading || isSubmitting}
-            className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 active:scale-95 disabled:opacity-50"
-          >
-            <Plus size={18} />
-            Create User
-          </button>
+          {canManageUsers && (
+            <button
+              type="button"
+              onClick={() => { setEditingUser(null); resetForm(); setIsModalOpen(true); }}
+              disabled={loading || isSubmitting}
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 active:scale-95 disabled:opacity-50"
+            >
+              <Plus size={18} />
+              Create User
+            </button>
+          )}
         </div>
+
+        {canManageUsers && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-alt)] text-[var(--primary)]">
+                <Filter size={18} />
+              </span>
+              <div>
+                <label htmlFor="user-role-filter" className="block text-sm font-semibold text-[var(--text)]">
+                  Filter users
+                </label>
+                <p className="mt-0.5 text-xs text-[var(--muted)]">
+                  {visibleUsers.length} {visibleUsers.length === 1 ? 'user' : 'users'} shown
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {isAdmin && (
+                <select
+                  id="team-filter"
+                  aria-label="Filter by team"
+                  value={teamFilter}
+                  onChange={(event) => setTeamFilter(event.target.value)}
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-2.5 text-sm font-medium text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,116,255,0.12)] sm:w-64"
+                >
+                  <option value="all">All teams</option>
+                  <option value="direct">Directly under Admin (no manager)</option>
+                  {managers.map((manager) => (
+                    <option key={getId(manager)} value={getId(manager)}>
+                      {manager.name}'s team
+                    </option>
+                  ))}
+                </select>
+              )}
+              <select
+                id="user-role-filter"
+                value={roleFilter}
+                onChange={(event) => setRoleFilter(event.target.value)}
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-2.5 text-sm font-medium text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,116,255,0.12)] sm:w-56"
+              >
+                <option value="all">All roles</option>
+                {roleFilterOptions.map(({ label, value }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && !loading && (
           <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             <AlertCircle size={18} className="shrink-0" />
             <span>{error}</span>
-          </div>
-        )}
-
-        {/* Team Filter (admin only) */}
-        {isAdmin && (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            <label htmlFor="team-filter" className="text-sm font-medium text-[var(--muted)]">
-              Team
-            </label>
-            <select
-              id="team-filter"
-              value={teamFilter}
-              onChange={(e) => setTeamFilter(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] sm:w-64"
-            >
-              <option value="all">All users</option>
-              <option value="direct">Directly under Admin (no manager)</option>
-              {managers.map((manager) => (
-                <option key={getId(manager)} value={getId(manager)}>
-                  {manager.name}'s team
-                </option>
-              ))}
-            </select>
           </div>
         )}
 
