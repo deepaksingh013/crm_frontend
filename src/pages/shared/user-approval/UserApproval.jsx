@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { AlertCircle, Check, } from 'lucide-react'
 import DynamicTable from '../../../components/table/DynamicTable'
 import ConfirmationModal from './ConfirmationModal'
+import ReportsToCell from '../users/ReportsToCell'
 const API_URL = process.env.REACT_APP_API_URL
 
 const roleMap = {
@@ -101,7 +102,8 @@ const UserApproval = () => {
         )
 
         try {
-            await axios.patch(`${API_URL}/users/${user._id}/approve`, {}, {
+            // isApproved: false = block (revoke approval)
+            await axios.patch(`${API_URL}/users/${user._id}/approve`, { isApproved: newApprovalStatus }, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -141,6 +143,13 @@ const UserApproval = () => {
                     {reverseRoleMap[value] || value}
                 </span>
             ),
+        },
+
+        // REPORTS TO
+        {
+            header: 'Reports To',
+            accessor: 'reportsTo',
+            render: (_, user) => <ReportsToCell user={user} />,
         },
 
         // ACTIONS

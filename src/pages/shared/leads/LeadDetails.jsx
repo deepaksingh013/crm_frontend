@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { Search, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Upload, Loader2, UserRound, UserPlus, RotateCcw, ArrowRightLeft } from 'lucide-react'
+import { Search, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Upload, Loader2, UserRound, UserPlus, RotateCcw, ArrowRightLeft, X } from 'lucide-react'
 import ImportCampaignModal from './ImportCampaignModal'
 import AssignModal from './AssignModal'
+import LeadStatusUpdateModal from '../../telecaller/sales-management/LeadStatusUpdateModal'
 import Modal from '../../../components/modal/Modal'
 import { useDispatch } from 'react-redux'
 import { apiGet, apiPost } from '../../../redux/apiMethods'
@@ -181,6 +182,7 @@ const ROLE_LABELS = {
   'team-leader': 'Team Leader',
   team_leader: 'Team Leader',
   manager: 'Manager',
+  admin: 'Admin',
 }
 
 const getRoleLabel = (user) => {
@@ -266,6 +268,10 @@ const LeadDetails = () => {
 
   const [isImporting, setIsImporting] =
     useState(false)
+
+  // Update lead (status / details) - open to every role
+  const [leadToUpdate, setLeadToUpdate] =
+    useState(null)
 
   // Assign
   const [isAssignModalOpen, setIsAssignModalOpen] =
@@ -432,17 +438,19 @@ const LeadDetails = () => {
         )
       }
 
+      // Picked dates are local days, and the Date column shows
+      // local time - so send the exact local start / end of day.
       if (fromDate) {
         params.append(
           'fromDate',
-          fromDate
+          new Date(`${fromDate}T00:00:00`).toISOString()
         )
       }
 
       if (toDate) {
         params.append(
           'toDate',
-          toDate
+          new Date(`${toDate}T23:59:59.999`).toISOString()
         )
       }
 
@@ -1114,30 +1122,69 @@ const LeadDetails = () => {
               />
             </div>
 
-            <label className="block">
+            {/* FROM / TO DATE (date inputs can't show a placeholder, so label them inside) */}
+            <label className="relative block">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted)]">
+                From
+              </span>
               <input
                 type="date"
                 aria-label="Created from date"
                 value={fromDate}
+                max={toDate || undefined}
                 onChange={(e) => {
                   setFromDate(e.target.value)
                   resetToFirstPage()
                 }}
-                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] px-3 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] pl-14 pr-14 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
               />
+              {fromDate && (
+                <button
+                  type="button"
+                  aria-label="Clear from date"
+                  title="Clear"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setFromDate('')
+                    resetToFirstPage()
+                  }}
+                  className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </label>
 
-            <label className="block">
+            <label className="relative block">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted)]">
+                To
+              </span>
               <input
                 type="date"
                 aria-label="Created to date"
                 value={toDate}
+                min={fromDate || undefined}
                 onChange={(e) => {
                   setToDate(e.target.value)
                   resetToFirstPage()
                 }}
-                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] px-3 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] pl-10 pr-14 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
               />
+              {toDate && (
+                <button
+                  type="button"
+                  aria-label="Clear to date"
+                  title="Clear"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setToDate('')
+                    resetToFirstPage()
+                  }}
+                  className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </label>
           </div>
 
@@ -1554,12 +1601,24 @@ const LeadDetails = () => {
                             row.updatedAt ||
                             row.createdAt
                           )}
+                          {row.lastUpdatedBy?.name && (
+                            <div
+                              className="mt-0.5 text-xs text-[var(--muted)]"
+                              title={formatDateTime(row.lastUpdatedAt)}
+                            >
+                              Updated by{' '}
+                              <span className="font-semibold text-[var(--text)]">
+                                {row.lastUpdatedBy.name}
+                              </span>{' '}
+                              ({getRoleLabel(row.lastUpdatedBy)})
+                            </div>
+                          )}
                         </td>
                         <td data-label="Action" className="px-3 py-2">
                           <button
                             type="button"
-                            disabled
-                            className="app-table-btn cursor-not-allowed opacity-60"
+                            onClick={() => setLeadToUpdate(row)}
+                            className="app-table-btn"
                           >
                             Update
                           </button>
@@ -1647,6 +1706,15 @@ const LeadDetails = () => {
           </div>
         </div>
       )}
+      <LeadStatusUpdateModal
+        isOpen={!!leadToUpdate}
+        lead={leadToUpdate}
+        onClose={() => setLeadToUpdate(null)}
+        // fetchLeads takes an AbortSignal, so don't pass the response through
+        onUpdateSuccess={() => fetchLeads()}
+        campaignId={campaignId}
+      />
+
       <AssignModal
         open={
           isAssignModalOpen

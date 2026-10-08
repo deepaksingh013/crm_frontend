@@ -1,34 +1,8 @@
-import React, { useEffect, useState } from 'react'
-import { Check, ChevronDown, Eye, EyeOff } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import Cookies from 'js-cookie'
 import Modal from '../../../components/modal/Modal'
-
-const permissionOptions = [
-  { label: 'Dashboard', value: 'dashboard' },
-  { label: 'User management', value: 'users' },
-  { label: 'Campaigns', value: 'campaigns' },
-  { label: 'Leads', value: 'leads' },
-  { label: 'Reports', value: 'reports' },
-  { label: 'Settings', value: 'settings' },
-]
-
-const rolePermissionMap = {
-  Manager: [
-    'dashboard',
-    'users',
-    'campaigns',
-    'leads',
-    'reports',
-    'settings',
-  ],
-  'Team Leader': [
-    'dashboard',
-    'campaigns',
-    'leads',
-    'reports',
-  ],
-  'Tele caller': ['leads', 'reports'],
-}
+import { getId } from './ReportsToCell'
 
 const ROLE_OPTIONS = ['Manager', 'Team Leader', 'Tele caller']
 
@@ -52,6 +26,64 @@ const getCreatableRoles = (currentRole) => {
   return ['Tele caller']
 }
 
+const selectClassName = 'w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,116,255,0.12)]'
+
+// Red border + ring when the field is invalid
+const getInputClassName = (hasError, extra = '') =>
+  `w-full rounded-2xl border bg-[var(--surface-alt)] px-4 py-3 text-[var(--text)] outline-none transition focus:ring-4 ${extra} ${hasError
+    ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
+    : 'border-[var(--border)] focus:border-[var(--primary)] focus:ring-[rgba(11,116,255,0.12)]'
+  }`
+
+// =====================================
+// VALIDATION
+// =====================================
+
+const NAME_PATTERN = /^[\p{L}\p{M}\d\s.'-]+$/u
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+// Returns { field: message } for every invalid field
+const validateUser = ({ name, email, password, isEditing, users, editingUserId }) => {
+  const errors = {}
+
+  const trimmedName = name.trim()
+  if (!trimmedName) errors.name = 'Full name is required'
+  else if (trimmedName.length < 2) errors.name = 'Name must be at least 2 characters'
+  else if (trimmedName.length > 50) errors.name = 'Name must be 50 characters or less'
+  else if (!NAME_PATTERN.test(trimmedName)) errors.name = "Use only letters, numbers, spaces, . ' or -"
+
+  const trimmedEmail = email.trim().toLowerCase()
+  if (!trimmedEmail) errors.email = 'Email is required'
+  else if (trimmedEmail.length > 100 || !EMAIL_PATTERN.test(trimmedEmail)) errors.email = 'Enter a valid email address'
+  // Best effort - only checks users this person can see; the server still checks everyone
+  else if (users.some((user) => String(user.email || '').toLowerCase() === trimmedEmail && getId(user) !== editingUserId)) {
+    errors.email = 'This email is already in use'
+  }
+
+  // Password is only set when creating
+  if (!isEditing) {
+    if (!password) errors.password = 'Password is required'
+    else if (password.length < 6) errors.password = 'Password must be at least 6 characters'
+    else if (password.length > 50) errors.password = 'Password must be 50 characters or less'
+    else if (/\s/.test(password)) errors.password = 'Password cannot contain spaces'
+    else if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) errors.password = 'Use at least one letter and one number'
+  }
+
+  return errors
+}
+
+// Order fields are focused in when the form has errors
+const FIELD_IDS = { name: 'user-name', email: 'user-email', password: 'user-password' }
+
+const FieldError = ({ field, message }) =>
+  message ? (
+    <p id={`${FIELD_IDS[field]}-error`} className="text-xs font-medium text-red-600">
+      {message}
+    </p>
+  ) : null
+
+const RequiredMark = () => <span className="text-red-600" aria-hidden="true"> *</span>
+
 const Createusermodal = ({
   open,
   isEditing,
@@ -67,36 +99,95 @@ const Createusermodal = ({
   setRole,
   status,
   setStatus,
-  permissions,
-  setPermissions,
+  managerId,
+  setManagerId,
+  teamLeaderId,
+  setTeamLeaderId,
+  users = [],
+  editingUserId = '',
   onSubmit,
 }) => {
-  const [dropdownOpen, setDropdownOpen] = useState(false)
   const [passwordVisible, setPasswordVisible] = useState(false)
+  // Errors show once a field is left, or after a submit attempt
+  const [touched, setTouched] = useState({})
+  const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
-    if (!open) {
-      setDropdownOpen(false)
-      setPasswordVisible(false)
-    }
+    setPasswordVisible(false)
+    setTouched({})
+    setSubmitted(false)
   }, [open])
 
-  const handleTogglePermission = (value) => {
-    setPermissions((current) =>
-      current.includes(value)
-        ? current.filter(
-            (permission) => permission !== value
-          )
-        : [...current, value]
-    )
+  const errors = useMemo(
+    () => validateUser({ name, email, password, isEditing, users, editingUserId }),
+    [name, email, password, isEditing, users, editingUserId]
+  )
+
+  const getError = (field) => (touched[field] || submitted ? errors[field] : undefined)
+
+  const markTouched = (field) => () => setTouched((current) => ({ ...current, [field]: true }))
+
+  const getFieldProps = (field) => ({
+    id: FIELD_IDS[field],
+    onBlur: markTouched(field),
+    'aria-invalid': Boolean(getError(field)),
+    'aria-describedby': getError(field) ? `${FIELD_IDS[field]}-error` : undefined,
+  })
+
+  // Never hit the server while anything is invalid
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    setSubmitted(true)
+
+    const firstInvalid = Object.keys(FIELD_IDS).find((field) => errors[field])
+
+    if (firstInvalid) {
+      document.getElementById(FIELD_IDS[firstInvalid])?.focus()
+      return
+    }
+
+    onSubmit(e)
   }
 
-  useEffect(() => {
-    const allowed = rolePermissionMap[role] || []
-    setPermissions(allowed)
-  }, [role, setPermissions])
+  const currentRole = String(Cookies.get('role') || '').toLowerCase().trim()
+  const creatableRoles = getCreatableRoles(currentRole)
 
-  const creatableRoles = getCreatableRoles(Cookies.get('role'))
+  // =====================================
+  // TEAM PLACEMENT
+  // =====================================
+  // admin   -> picks a manager (or none = direct to admin),
+  //            and for a TC, a TL of that manager
+  // manager -> TL / TC go into their own team; TC can pick a TL
+  // tl      -> TC goes under them automatically
+
+  const isAdmin = currentRole === 'admin'
+  const isTeamMemberRole = role === 'Team Leader' || role === 'Tele caller'
+  const showManagerSelect = isAdmin && isTeamMemberRole
+  const showTeamLeaderSelect = (isAdmin || currentRole === 'manager') && role === 'Tele caller'
+
+  const managerOptions = users.filter(
+    (user) => user.role === 'manager' && (user.isActive || getId(user) === managerId)
+  )
+
+  // Manager's /users list is already only their team
+  const teamLeaderOptions = users.filter(
+    (user) =>
+      user.role === 'tl' &&
+      (user.isActive || getId(user) === teamLeaderId) &&
+      (!isAdmin || getId(user.manager) === (managerId || ''))
+  )
+
+  const getPlacementNote = () => {
+    if (role === 'Manager') return 'Managers report directly to Admin.'
+    if (currentRole === 'tl') return 'This telecaller will be added to your team.'
+    if (currentRole === 'manager') return 'This user will be added to your team.'
+    if (!managerId) {
+      return managerOptions.length === 0
+        ? 'No manager created yet. This user will report directly to Admin.'
+        : 'No manager selected. This user will report directly to Admin.'
+    }
+    return 'Only this manager (and Admin) will be able to see this user.'
+  }
 
   // When editing a user whose role is above the current user's level,
   // still show that role (disabled) so the select displays the right value
@@ -104,67 +195,66 @@ const Createusermodal = ({
     ? creatableRoles
     : [role, ...creatableRoles]
 
-  const availablePermissions = permissionOptions.filter(
-    (option) =>
-      rolePermissionMap[role]?.includes(option.value)
-  )
-
-  const selectedLabels = availablePermissions
-    .filter((permission) =>
-      permissions.includes(permission.value)
-    )
-    .map((permission) => permission.label)
-
   return (
     <Modal
       open={open}
       onClose={onClose}
       title={isEditing ? 'Edit user' : 'Create new user'}
     >
-      <form onSubmit={onSubmit} >
+      {/* noValidate: our own messages replace the browser's bubbles */}
+      <form onSubmit={handleSubmit} noValidate autoComplete="off">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-2">
             <span className="text-sm font-medium text-[var(--text)]">
-              Full name
+              Full name<RequiredMark />
             </span>
 
             <input
+              {...getFieldProps('name')}
               value={name}
               onChange={(e) =>
                 setName(e.target.value)
               }
+              maxLength={50}
+              autoComplete="off"
               placeholder="Enter full name"
-              className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,116,255,0.12)]"
+              className={getInputClassName(getError('name'))}
             />
+            <FieldError field="name" message={getError('name')} />
           </label>
 
           {/* EMAIL */}
           <label className="space-y-2">
             <span className="text-sm font-medium text-[var(--text)]">
-              Email
+              Email<RequiredMark />
             </span>
 
+            {/* autoComplete off so the browser doesn't fill in the admin's own login */}
             <input
+              {...getFieldProps('email')}
               value={email}
               onChange={(e) =>
                 setEmail(e.target.value)
               }
               type="email"
-              required
+              maxLength={100}
+              autoComplete="off"
               placeholder="Enter email address"
-              className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,116,255,0.12)]"
+              className={getInputClassName(getError('email'))}
             />
+            <FieldError field="email" message={getError('email')} />
           </label>
 
           {/* PASSWORD */}
           {!isEditing && (
             <label className="space-y-2">
               <span className="text-sm font-medium text-[var(--text)]">
-                Password
+                Password<RequiredMark />
               </span>
 
               <div className="relative">
                 <input
+                  {...getFieldProps('password')}
                   value={password}
                   onChange={(e) =>
                     setPassword(e.target.value)
@@ -174,9 +264,10 @@ const Createusermodal = ({
                       ? 'text'
                       : 'password'
                   }
-                  required={!isEditing} // Password is not required when editing
-                  placeholder="Enter password"
-                  className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 pr-12 text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,116,255,0.12)]"
+                  maxLength={50}
+                  autoComplete="new-password"
+                  placeholder="Min 6 characters, letters + numbers"
+                  className={getInputClassName(getError('password'), 'pr-12')}
                 />
 
                 <button
@@ -200,6 +291,7 @@ const Createusermodal = ({
                   )}
                 </button>
               </div>
+              <FieldError field="password" message={getError('password')} />
             </label>
           )}
 
@@ -228,6 +320,56 @@ const Createusermodal = ({
             </select>
           </label>
 
+          {/* MANAGER (admin only) */}
+          {showManagerSelect && (
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-[var(--text)]">
+                Manager
+              </span>
+
+              <select
+                value={managerId}
+                onChange={(e) => {
+                  setManagerId(e.target.value)
+                  // TL list depends on the manager
+                  setTeamLeaderId('')
+                }}
+                className={selectClassName}
+              >
+                <option value="">Directly under Admin</option>
+                {managerOptions.map((manager) => (
+                  <option key={getId(manager)} value={getId(manager)}>
+                    {manager.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {/* TEAM LEADER (TC only) */}
+          {showTeamLeaderSelect && (
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-[var(--text)]">
+                Team Leader
+              </span>
+
+              <select
+                value={teamLeaderId}
+                onChange={(e) => setTeamLeaderId(e.target.value)}
+                className={selectClassName}
+              >
+                <option value="">
+                  {teamLeaderOptions.length === 0 ? 'No team leader in this team' : 'No team leader'}
+                </option>
+                {teamLeaderOptions.map((teamLeader) => (
+                  <option key={getId(teamLeader)} value={getId(teamLeader)}>
+                    {teamLeader.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           {/* STATUS */}
           {isEditing && (
             <label className="space-y-2">
@@ -252,96 +394,10 @@ const Createusermodal = ({
               </select>
             </label>
           )}
-        </div>
 
-        {/* PERMISSIONS */}
-        <div className="space-y-2">
-          <span className="text-sm font-medium text-[var(--text)]">
-            Permissions
-          </span>
-          <p className="text-xs text-[var(--muted)]">
-            Grant access to sidebar sections based on the selected role.
+          <p className="text-xs text-[var(--muted)] sm:col-span-2">
+            {getPlacementNote()}
           </p>
-
-          <div className="relative w-full">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-[var(--text)] transition hover:border-[var(--primary)] focus-within:border-[var(--primary)] focus-within:ring-4 focus-within:ring-[rgba(11,116,255,0.12)]">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-h-[1.5rem] flex-1 text-sm text-[var(--muted)]">
-                  {selectedLabels.length > 0
-                    ? selectedLabels.join(', ')
-                    : 'No permissions selected.'}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDropdownOpen(
-                      (prev) => !prev
-                    )
-                  }
-                  className="inline-flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:border-[var(--primary)]"
-                >
-                  {selectedLabels.length > 0
-                    ? `${selectedLabels.length} selected`
-                    : 'Select Permissions'}
-
-                  <ChevronDown
-                    size={16}
-                    className={`transition duration-200 ${
-                      dropdownOpen
-                        ? 'rotate-180'
-                        : 'rotate-0'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-
-            {/* PERMISSION DROPDOWN */}
-            <div
-              className={`absolute right-0 z-20 mt-2 w-full origin-top-right overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_16px_40px_rgba(15,23,36,0.12)] transition-all duration-200 sm:w-64 ${
-                dropdownOpen
-                  ? 'max-h-72 opacity-100'
-                  : 'pointer-events-none max-h-0 opacity-0'
-              }`}
-            >
-              <div className="space-y-1 p-3">
-                {availablePermissions.length > 0 ? (
-                  availablePermissions.map((option) => {
-                    const checked = permissions.includes(option.value);
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() =>
-                          handleTogglePermission(
-                            option.value
-                          )
-                        }
-                        className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm text-[var(--text)] transition hover:bg-[var(--surface-alt)]"
-                      >
-                        <span>{option.label}</span>
-
-                        <span
-                          className={`flex h-6 w-6 items-center justify-center rounded-full border transition ${
-                            checked
-                              ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
-                              : 'border-[var(--border)] bg-transparent text-[var(--muted)]'
-                          }`}
-                        >
-                          {checked && <Check size={14} />}
-                        </span>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <p className="px-3 py-2 text-center text-sm text-[var(--muted)]">
-                    No permissions available for this role.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* BUTTONS */}

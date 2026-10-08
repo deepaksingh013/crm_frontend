@@ -24,18 +24,17 @@ const Auth = () => {
   const dispatch = useDispatch();
 
 
+  // Landing page after login = first sidebar menu.
+  // Admin / manager / TL dashboards are hidden for now (static),
+  // so they start on User Management.
   const getDashboardRoute = (role) => {
     switch (role?.toLowerCase()) {
       case "admin":
-        return "/dashboard";
-
       case "manager":
-        return "/manager/dashboard";
-
       case "tl":
       case "teamleader":
       case "team leader":
-        return "/tl/dashboard";
+        return "/users";
 
       case "tc":
       case "telecaller":

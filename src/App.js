@@ -10,13 +10,17 @@ import Unauthorized from './components/Unauthorized'
 import Sidebar from './components/sidebar/Sidebar'
 import Header from './components/header/Header'
 
-import Dashboard from './pages/admin/Dashboard'
+// Hidden for now (static pages) - see RoleDashboard below
+// import Dashboard from './pages/admin/Dashboard'
+// import ManagerDashboard from './pages/manager/Dashboard'
+// import TeamLeaderDashboard from './pages/team-leader/Dashboard'
+// import Report from './pages/shared/reports/Report'
+import TeamReport from './pages/shared/reports/TeamReport'
 import UserManagement from './pages/shared/users/UserManagement'
 import CampaignManagment from './pages/shared/campaigns/CampaignManagment'
 import LeadDetails from './pages/shared/leads/LeadDetails'
 import Leadmanagment from './pages/shared/leads/Leadmanagment'
 import GlobalLeadSearch from './pages/shared/leads/GlobalLeadSearch'
-import Report from './pages/shared/reports/Report'
 
 import { setUserFromCookies } from './features/auth/authSlice'
 import CommingSoon from './components/CommingSoon'
@@ -25,20 +29,20 @@ import SalesManagment from './pages/telecaller/sales-management/SalesManagment'
 import TcList from './pages/shared/telecallers/TcList'
 import TcDetails from './pages/shared/telecallers/TcDetails'
 import UserApproval from './pages/shared/user-approval/UserApproval'
-import ManagerDashboard from './pages/manager/Dashboard'
-import TeamLeaderDashboard from './pages/team-leader/Dashboard'
 import { useAuth } from './hooks/useAuth'
 
+// Admin / manager / TL dashboards are hidden for now (static),
+// so they go straight to the first sidebar menu: User Management.
 const RoleDashboard = () => {
   const { role } = useAuth()
 
   switch (role?.toLowerCase()) {
+    case 'admin':
     case 'manager':
-      return <ManagerDashboard />
     case 'tl':
     case 'teamleader':
     case 'team leader':
-      return <TeamLeaderDashboard />
+      return <Navigate to="/users" replace />
     case 'tc':
     case 'telecaller':
     case 'tele caller':
@@ -46,7 +50,7 @@ const RoleDashboard = () => {
     case 'agent':
       return <TcDashboard />
     default:
-      return <Dashboard />
+      return <Navigate to="/login" replace />
   }
 }
 
@@ -197,11 +201,12 @@ function App() {
             path="/devices"
             element={<Navigate to="/user-approval" replace />}
           />
+          {/* Team-wise lead report (admin / manager / TL) */}
           <Route
             path="/reports"
             element={
               <MainLayout>
-                <Report />
+                <TeamReport />
               </MainLayout>
             }
           />

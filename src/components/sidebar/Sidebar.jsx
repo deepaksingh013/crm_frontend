@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation, } from 'react-router-dom'
-import { Users2, ListCheck, Podium, X, ChevronLeft, ChevronRight, CheckCircle2, LogOut, CircleUser, } from 'lucide-react'
+import { Users2, ListCheck, Podium, X, ChevronLeft, ChevronRight, CheckCircle2, LogOut, CircleUser, Network, } from 'lucide-react'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 import ConfirmationModal from './ConfirmationModal'
@@ -8,13 +8,16 @@ import { useAuth } from '../../hooks/useAuth'
 
 const API_URL = process.env.REACT_APP_API_URL
 
+// Dashboard is hidden for now (static page).
+// After login admin / manager / TL land on the first item here.
+// Telecallers use AGENT_MENU, so Reports never shows for them.
 const ADMIN_MENU = [
-  {
-    label: 'Dashboard',
-    path: '/dashboard',
-    icon: Podium,
-    permission: 'dashboard',
-  },
+  // {
+  //   label: 'Dashboard',
+  //   path: '/dashboard',
+  //   icon: Podium,
+  //   permission: 'dashboard',
+  // },
   {
     label: 'User Management',
     path: '/users',
@@ -48,7 +51,7 @@ const ADMIN_MENU = [
   {
     label: 'Reports',
     path: '/reports',
-    icon: ListCheck,
+    icon: Network,
     permission: 'reports',
   },
 ]

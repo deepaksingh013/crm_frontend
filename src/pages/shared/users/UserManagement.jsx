@@ -1,11 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import DynamicTable from '../../../components/table/DynamicTable'
 import Createusermodal from './Createuser.modal'
 import axios from 'axios'
 import DeleteConfirmModal from './DeleteConfirmModal'
+import ReportsToCell, { getId } from './ReportsToCell'
 import Cookies from 'js-cookie'
 import toast from 'react-hot-toast'
 import { Edit, Trash2, Plus, AlertCircle } from 'lucide-react'
+import { useAuth } from '../../../hooks/useAuth'
 
 const API_URL = process.env.REACT_APP_API_URL
 
@@ -31,6 +33,8 @@ const isTelecallerUser = (user) => {
 }
 
 const UserManagement = () => {
+  const { role: currentRole } = useAuth()
+  const isAdmin = String(currentRole || '').toLowerCase() === 'admin'
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -45,7 +49,9 @@ const UserManagement = () => {
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('Tele caller')
   const [status, setStatus] = useState("active")
-  const [permissions, setPermissions] = useState(['leads', 'reports'])
+  const [managerId, setManagerId] = useState('')
+  const [teamLeaderId, setTeamLeaderId] = useState('')
+  const [teamFilter, setTeamFilter] = useState('all')
 
   const fetchUsers = useCallback(async () => {
     const token = Cookies.get('token')
@@ -95,7 +101,8 @@ const UserManagement = () => {
     setPassword('')
     setRole('Tele caller')
     setStatus("active")
-    setPermissions(['leads', 'reports'])
+    setManagerId('')
+    setTeamLeaderId('')
   }
 
   const handleCloseModal = () => {
@@ -119,11 +126,15 @@ const UserManagement = () => {
     setIsSubmitting(true)
 
     const userData = {
-      name: name || email.split('@')[0],
-      email,
+      // Already validated in the modal
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
       role: roleMap[role] || 'tc',
-      permissions,
       isActive: status === "active" ? true : false,
+      // Empty = reports directly to admin / no TL.
+      // Backend fills these in itself for manager / TL creators.
+      managerId: managerId || null,
+      teamLeaderId: teamLeaderId || null,
     }
     console.log(userData)
 
@@ -166,7 +177,10 @@ const UserManagement = () => {
     setEmail(user.email)
     const roleKey = Object.keys(roleMap).find(key => roleMap[key] === user.role) || 'Tele caller';
     setRole(roleKey)
-    setPermissions(user.permissions || [])
+    // Load the real status, otherwise saving would un-block a blocked user
+    setStatus(user.isActive === false ? 'block' : 'active')
+    setManagerId(getId(user.manager))
+    setTeamLeaderId(getId(user.teamLeader))
     setIsModalOpen(true)
   }
 
@@ -193,14 +207,15 @@ const UserManagement = () => {
 
     setIsDeleting(true)
     try {
-      await axios.delete(`${API_URL}/users/${userToDelete._id}`, {
+      const response = await axios.delete(`${API_URL}/users/${userToDelete._id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
 
       await fetchUsers()
-      toast.success('User deleted successfully!');
+      // Server says how many leads went back to the pool
+      toast.success(response.data?.message || 'User deleted successfully!');
       closeDeleteModal()
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Failed to delete user';
@@ -241,6 +256,26 @@ const UserManagement = () => {
   //   }
   // }
 
+  // Admin: narrow the table down to one manager's team
+  const managers = useMemo(
+    () => users.filter((user) => user.role === 'manager'),
+    [users]
+  )
+
+  const visibleUsers = useMemo(() => {
+    if (teamFilter === 'all') return users
+
+    if (teamFilter === 'direct') {
+      return users.filter(
+        (user) => ['tl', 'tc'].includes(user.role) && !getId(user.manager)
+      )
+    }
+
+    return users.filter(
+      (user) => getId(user) === teamFilter || getId(user.manager) === teamFilter
+    )
+  }, [users, teamFilter])
+
   const columns = [
     {
       header: 'Name',
@@ -262,6 +297,13 @@ const UserManagement = () => {
       ),
     },
 
+    // REPORTS TO
+    {
+      header: 'Reports To',
+      accessor: 'reportsTo',
+      render: (_, user) => <ReportsToCell user={user} />,
+    },
+
     // STATUS
     {
       header: 'Status',
@@ -271,60 +313,12 @@ const UserManagement = () => {
         <span
           className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold text-white ${value
             ? 'bg-[var(--success)]'
-            : 'bg-[var(--muted)]'
+            : 'bg-red-500'
             }`}
         >
-          {value ? 'Active' : 'Inactive'}
+          {value ? 'Active' : 'Blocked'}
         </span>
       ),
-    },
-
-    // PERMISSIONS
-    {
-      header: 'Permissions',
-      accessor: 'permissions',
-
-      render: (value) => {
-        const permissionList = value || []
-
-        const visiblePermissions =
-          permissionList.slice(0, 2)
-
-        const hasMore = permissionList.length > 2
-
-        const hiddenPermissions =
-          permissionList.slice(2)
-
-        return (
-          <div className="flex flex-wrap items-center gap-2">
-            {visiblePermissions.length > 0 ? (
-              visiblePermissions.map(
-                (permission) => (
-                  <span
-                    key={permission}
-                    className="rounded-full bg-[var(--surface-alt)] px-3 py-1 text-[13px] font-semibold text-[var(--text)]"
-                  >
-                    {permission}
-                  </span>
-                )
-              )
-            ) : (
-              <span className="text-xs text-[var(--muted)]">
-                No permissions
-              </span>
-            )}
-
-            {hasMore && (
-              <span
-                title={hiddenPermissions.join(', ')}
-                className="cursor-help rounded-full bg-[var(--surface-alt)] px-3 py-1 text-[11px] font-bold text-[var(--muted)]"
-              >
-                ...
-              </span>
-            )}
-          </div>
-        )
-      },
     },
 
     // ACTIONS
@@ -347,9 +341,9 @@ const UserManagement = () => {
           {/* DELETE */}
           <button
             type="button"
-            title="Delete User"
+            title={user.role === 'admin' ? 'Admin cannot be deleted' : 'Delete User'}
             onClick={() => openDeleteModal(user)}
-            disabled={!user.isActive}
+            disabled={user.role === 'admin'}
             className="rounded-lg p-1.5 text-gray-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Trash2 size={18} />
@@ -390,11 +384,34 @@ const UserManagement = () => {
           </div>
         )}
 
+        {/* Team Filter (admin only) */}
+        {isAdmin && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <label htmlFor="team-filter" className="text-sm font-medium text-[var(--muted)]">
+              Team
+            </label>
+            <select
+              id="team-filter"
+              value={teamFilter}
+              onChange={(e) => setTeamFilter(e.target.value)}
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] sm:w-64"
+            >
+              <option value="all">All users</option>
+              <option value="direct">Directly under Admin (no manager)</option>
+              {managers.map((manager) => (
+                <option key={getId(manager)} value={getId(manager)}>
+                  {manager.name}'s team
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Users Table */}
         <div className="rounded-2xl shadow-sm">
           <DynamicTable
             columns={columns}
-            data={users}
+            data={visibleUsers}
             isLoading={loading}
           />
         </div>
@@ -416,8 +433,12 @@ const UserManagement = () => {
         setRole={setRole}
         status={status}
         setStatus={setStatus}
-        permissions={permissions}
-        setPermissions={setPermissions}
+        managerId={managerId}
+        setManagerId={setManagerId}
+        teamLeaderId={teamLeaderId}
+        setTeamLeaderId={setTeamLeaderId}
+        users={users}
+        editingUserId={editingUser ? getId(editingUser) : ''}
         onSubmit={handleFormSubmit}
       />
 
@@ -428,7 +449,7 @@ const UserManagement = () => {
         onConfirm={handleDeleteUser}
         isLoading={isDeleting}
         title="Delete User"
-        message={`Are you sure you want to delete "${userToDelete?.name || userToDelete?.email}"? This action cannot be undone.`}
+        message={`Delete "${userToDelete?.name || userToDelete?.email}"? They will be hidden from all lists and won't be able to log in. Any leads assigned to them go back to the unassigned pool. To only stop them logging in for now, edit the user and set Status to Block instead.`}
         confirmText="Delete"
         confirmVariant="danger"
       />
