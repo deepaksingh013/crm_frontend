@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Search, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Upload, Loader2, UserRound, UserPlus, RotateCcw, ArrowRightLeft, X } from 'lucide-react'
 import ImportCampaignModal from './ImportCampaignModal'
@@ -258,6 +258,10 @@ const LeadDetails = () => {
   const [totalLeads, setTotalLeads] =
     useState(0)
 
+  // Per-status lead counts for the tabs, e.g. { Pending: 50 }
+  const [statusCounts, setStatusCounts] =
+    useState({})
+
   const [page, setPage] =
     useState(1)
 
@@ -290,6 +294,28 @@ const LeadDetails = () => {
   const [isTransferring, setIsTransferring] = useState(false)
 
   const transferMode = selectedLeadIds.length > 0 ? 'selected' : 'count'
+
+  // Table filters, also sent with "transfer by count" so the
+  // backend picks exactly the top N rows the table shows
+  const leadFilters = useMemo(() => {
+    const filters = {}
+
+    if (statusFilter) filters.status = statusFilter
+    if (selectedTcId) filters.assignedTo = selectedTcId
+    if (filterQuery.trim()) filters.search = filterQuery.trim()
+
+    // Picked dates are local days, and the Date column shows
+    // local time - so send the exact local start / end of day.
+    if (fromDate || toDate) filters.dateField = 'createdAt'
+    if (fromDate) filters.fromDate = new Date(`${fromDate}T00:00:00`).toISOString()
+    if (toDate) filters.toDate = new Date(`${toDate}T23:59:59.999`).toISOString()
+
+    return filters
+  }, [statusFilter, selectedTcId, filterQuery, fromDate, toDate])
+
+  // Filters the visible rows were loaded with (search is
+  // debounced, so leadFilters can be ahead of the table)
+  const loadedFiltersRef = useRef(leadFilters)
 
   useEffect(() => {
     const fetchTelecallers = async () => {
@@ -349,8 +375,9 @@ const LeadDetails = () => {
     fetchTelecallers()
   }, [])
 
+  // Reloaded on every open so new / deleted campaigns show up
   useEffect(() => {
-    if (!isTransferModalOpen || campaignOptions.length > 0) return undefined
+    if (!isTransferModalOpen) return undefined
 
     let active = true
     setCampaignsLoading(true)
@@ -364,7 +391,9 @@ const LeadDetails = () => {
           response,
         ]
         const list = candidates.find(Array.isArray) || []
-        if (active) setCampaignOptions(list)
+        // Deleted campaigns are only marked inactive, and the
+        // backend refuses them as a destination
+        if (active) setCampaignOptions(list.filter((item) => item?.isActive !== false))
       })
       .catch((requestError) => {
         if (active) {
@@ -378,7 +407,7 @@ const LeadDetails = () => {
     return () => {
       active = false
     }
-  }, [campaignOptions.length, dispatch, isTransferModalOpen])
+  }, [dispatch, isTransferModalOpen])
 
   const fetchLeads = useCallback(async (signal) => {
     if (!campaignId) return
@@ -400,61 +429,11 @@ const LeadDetails = () => {
 
     try {
       const params =
-        new URLSearchParams()
-
-      params.append(
-        'page',
-        String(page)
-      )
-
-      params.append(
-        'limit',
-        String(PAGE_SIZE)
-      )
-
-      if (statusFilter) {
-        params.append(
-          'status',
-          statusFilter
-        )
-      }
-
-      if (selectedTcId) {
-        params.append(
-          'assignedTo',
-          selectedTcId
-        )
-      }
-
-      if (filterQuery.trim()) {
-        params.append(
-          'search',
-          filterQuery.trim()
-        )
-      }
-
-      if (fromDate || toDate) {
-        params.append(
-          'dateField',
-          'createdAt'
-        )
-      }
-
-      // Picked dates are local days, and the Date column shows
-      // local time - so send the exact local start / end of day.
-      if (fromDate) {
-        params.append(
-          'fromDate',
-          new Date(`${fromDate}T00:00:00`).toISOString()
-        )
-      }
-
-      if (toDate) {
-        params.append(
-          'toDate',
-          new Date(`${toDate}T23:59:59.999`).toISOString()
-        )
-      }
+        new URLSearchParams({
+          page: String(page),
+          limit: String(PAGE_SIZE),
+          ...leadFilters,
+        })
 
       const queryString =
         params.toString()
@@ -529,6 +508,7 @@ const LeadDetails = () => {
       }
 
       setLeads(leadsData)
+      loadedFiltersRef.current = leadFilters
 
 
       const campaignData =
@@ -581,6 +561,12 @@ const LeadDetails = () => {
         leadsData.length
       )
 
+      setStatusCounts(
+        data?.statusCounts ||
+        data?.data?.statusCounts ||
+        {}
+      )
+
       setTotalPages(
         Math.max(
           Number(pages) || 1,
@@ -599,11 +585,7 @@ const LeadDetails = () => {
     }
   }, [
     campaignId,
-    selectedTcId,
-    statusFilter,
-    filterQuery,
-    fromDate,
-    toDate,
+    leadFilters,
     page,
   ])
 
@@ -650,9 +632,12 @@ const LeadDetails = () => {
       return
     }
 
+    // Selected: only leads still in this tab's status move.
+    // Count: top N rows of the table as currently filtered.
+    const tableFilters = loadedFiltersRef.current
     const payload = transferMode === 'selected'
-      ? { targetCampaignId, leadIds: selectedLeadIds }
-      : { targetCampaignId, count: Number(transferCount) }
+      ? { targetCampaignId, leadIds: selectedLeadIds, status: tableFilters.status }
+      : { targetCampaignId, count: Number(transferCount), ...tableFilters }
 
     if (transferMode === 'selected' && selectedLeadIds.length === 0) {
       toast.error('Select at least one lead to transfer.')
@@ -674,20 +659,22 @@ const LeadDetails = () => {
       const endpoint = transferMode === 'selected'
         ? `/campaigns/${campaignId}/leads/transfer`
         : `/campaigns/${campaignId}/leads/transfer-by-count`
-      await dispatch(apiPost(endpoint, payload))
+      const response = await dispatch(apiPost(endpoint, payload))
 
-      const transferredCount = transferMode === 'selected'
-        ? selectedLeadIds.length
-        : payload.count
-      const targetCampaign = campaignOptions.find((item) => (
-        String(item._id || item.id || item.campaignId) === String(targetCampaignId)
-      ))
-      const targetName = targetCampaign?.title || targetCampaign?.name || targetCampaign?.campaignName || 'the selected campaign'
+      // What the server actually moved - can be fewer than asked
+      // if some leads changed status since the table loaded
+      const movedCount = Number(response?.data?.movedCount) || 0
+      const skippedCount = transferMode === 'selected'
+        ? response?.data?.notFoundIds?.length || 0
+        : 0
 
       setSelectedLeadIds([])
       setIsTransferModalOpen(false)
       setTransferCount('1')
-      toast.success(`${transferredCount} ${transferredCount === 1 ? 'lead' : 'leads'} transferred to ${targetName}.`)
+      toast.success(response?.message || `${movedCount} ${movedCount === 1 ? 'lead' : 'leads'} transferred.`)
+      if (skippedCount > 0) {
+        toast(`${skippedCount} selected ${skippedCount === 1 ? 'lead was' : 'leads were'} skipped because ${skippedCount === 1 ? 'it is' : 'they are'} no longer in this tab.`)
+      }
       await fetchLeads()
     } catch (requestError) {
       toast.error(requestError.response?.data?.message || requestError.message || 'Failed to transfer leads.')
@@ -1290,7 +1277,8 @@ const LeadDetails = () => {
                       setTransferCount('1')
                       setIsTransferModalOpen(true)
                     }}
-                    disabled={isTransferring}
+                    // Wait for the table, so the count matches its filters
+                    disabled={isTransferring || loading}
                     className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:border-[var(--primary)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ArrowRightLeft size={15} />
@@ -1352,6 +1340,7 @@ const LeadDetails = () => {
               <div className="flex max-w-full flex-wrap items-center gap-0.5 rounded-lg bg-[var(--surface-alt)] p-0.5">
                 {STATUS_TABS.map(({ value, label }) => {
                   const isActive = statusFilter === value
+                  const count = statusCounts[value]
 
                   return (
                     <button
@@ -1361,12 +1350,22 @@ const LeadDetails = () => {
                         setStatusFilter(value)
                         resetToFirstPage()
                       }}
-                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${isActive
+                      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${isActive
                           ? 'bg-[var(--surface)] text-[var(--primary)] shadow-sm ring-1 ring-[var(--border)]'
                           : 'text-[var(--muted)] hover:text-[var(--text)]'
                         }`}
                     >
                       {label}
+                      {typeof count === 'number' && (
+                        <span
+                          className={`rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums ${isActive
+                              ? 'bg-blue-50 text-[var(--primary)]'
+                              : 'bg-[var(--surface)] text-[var(--muted)]'
+                            }`}
+                        >
+                          {count}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -1446,7 +1445,7 @@ const LeadDetails = () => {
                     Address
                   </th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    TC Name
+                    Assigned To
                   </th>
                   <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Status
@@ -1563,7 +1562,7 @@ const LeadDetails = () => {
                           {row.address ||
                             'N/A'}
                         </td>
-                        <td data-label="TC Name" className="whitespace-nowrap px-3 py-2">
+                        <td data-label="Assigned To" className="whitespace-nowrap px-3 py-2">
                           {row.assignedTo
                             ?.name ? (
                             <div className="inline-flex items-center gap-1.5">
@@ -1575,13 +1574,20 @@ const LeadDetails = () => {
                                   className="text-[var(--primary)]"
                                 />
                               </div>
-                              <span className="font-medium text-[var(--text)]">
-                                {
-                                  row
-                                    .assignedTo
-                                    .name
-                                }
-                              </span>
+                              <div className="flex flex-col leading-tight">
+                                <span className="font-medium text-[var(--text)]">
+                                  {
+                                    row
+                                      .assignedTo
+                                      .name
+                                  }
+                                </span>
+                                {getRoleLabel(row.assignedTo) && (
+                                  <span className="text-[0.7rem] text-[var(--muted)]">
+                                    {getRoleLabel(row.assignedTo)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           ) : (
                             <span className="text-[var(--muted)]">
@@ -1757,7 +1763,10 @@ const LeadDetails = () => {
             <p className="mt-1 text-xs text-blue-800">
               {transferMode === 'selected'
                 ? `${selectedLeadIds.length} selected ${selectedLeadIds.length === 1 ? 'lead' : 'leads'} will be transferred.`
-                : `No leads are selected. Choose how many ${getStatusLabel(statusFilter).toLowerCase()} leads to transfer.`}
+                : `No leads are selected. The top ${getStatusLabel(statusFilter).toLowerCase()} leads of the table (with the current filters) will be transferred.`}
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              Only {getStatusLabel(statusFilter).toLowerCase()} leads are moved. In the destination campaign they become New and unassigned.
             </p>
           </div>
 
@@ -1820,7 +1829,7 @@ const LeadDetails = () => {
                 className="h-9 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:opacity-60"
               />
               <span className="mt-1 block text-xs text-[var(--muted)]">
-                Up to {totalLeads} leads are available in the {getStatusLabel(statusFilter).toLowerCase()} tab.
+                Up to {totalLeads} {getStatusLabel(statusFilter).toLowerCase()} {totalLeads === 1 ? 'lead is' : 'leads are'} available with the current filters.
               </span>
             </label>
           )}

@@ -58,7 +58,7 @@ const LEAD_COLUMNS = [
   { label: 'City', keys: ['city', 'town'] },
   { label: 'Pincode', keys: ['pincode', 'pinCode', 'postalCode', 'zipCode'] },
   { label: 'Address', keys: ['address', 'customerAddress', 'fullAddress', 'location', 'address.line1', 'address.addressLine', 'address.street'] },
-  { label: 'TC Name', keys: ['tcName', 'telecallerName', 'assignedTo.name', 'assignedTo.fullName', 'telecaller.name', 'tc.name', 'assignedUser.name'] },
+  { label: 'Assigned To', keys: ['tcName', 'telecallerName', 'assignedTo.name', 'assignedTo.fullName', 'telecaller.name', 'tc.name', 'assignedUser.name'] },
   { label: 'Status', keys: ['status', 'leadStatus', 'state', 'lead_state'] },
 ]
 

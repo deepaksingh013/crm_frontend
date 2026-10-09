@@ -46,15 +46,18 @@ const UserManagement = () => {
   const { role: authRole } = useAuth()
   const currentRole = String(authRole || '').toLowerCase().trim()
   const isAdmin = currentRole === 'admin'
-  // Only admin / manager can create, edit or delete users
-  const canManageUsers = ['admin', 'manager'].includes(currentRole)
+  // Admin / manager / TL can create, edit or delete users
+  // (TL only their own telecallers - backend enforces the scope)
+  const canManageUsers = ['admin', 'manager', 'tl'].includes(currentRole)
   const roleFilterOptions = currentRole === 'admin'
     ? [
       { label: 'Manager', value: 'manager' },
       { label: 'Team Leader', value: 'tl' },
       { label: 'Tele caller', value: 'tc' },
     ]
-    : [{ label: 'Team Leader', value: 'tl' }, { label: 'Tele caller', value: 'tc' }]
+    : currentRole === 'tl'
+      ? [{ label: 'Tele caller', value: 'tc' }]
+      : [{ label: 'Team Leader', value: 'tl' }, { label: 'Tele caller', value: 'tc' }]
   const [users, setUsers] = useState([])
   const [roleFilter, setRoleFilter] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -349,7 +352,7 @@ const UserManagement = () => {
       ),
     },
 
-    // ACTIONS (admin / manager only)
+    // ACTIONS (admin / manager / TL)
     ...(canManageUsers
       ? [{
         header: 'Actions',
