@@ -31,31 +31,21 @@ const normalizeUserRole = (user) => {
   return role
 }
 
-const isTelecallerUser = (user) => {
-  const role = String(user?.role || user?.userRole || '').toLowerCase()
-
-  return (
-    role === 'tc' ||
-    role === 'telecaller' ||
-    role === 'tele caller' ||
-    role === 'tele-caller'
-  )
-}
-
 const UserManagement = () => {
   const { role: authRole } = useAuth()
   const currentRole = String(authRole || '').toLowerCase().trim()
   const isAdmin = currentRole === 'admin'
-  // Admin / manager / TL can create, edit or delete users
-  // (TL only their own telecallers - backend enforces the scope)
-  const canManageUsers = ['admin', 'manager', 'tl'].includes(currentRole)
+  const isTeamLeader = ['tl', 'teamleader', 'team leader', 'team-leader', 'team_leader'].includes(currentRole)
+  // Team leaders can manage users in their scope, but only admins and managers can create users.
+  const canManageUsers = ['admin', 'manager'].includes(currentRole) || isTeamLeader
+  const canCreateUsers = ['admin', 'manager'].includes(currentRole)
   const roleFilterOptions = currentRole === 'admin'
     ? [
       { label: 'Manager', value: 'manager' },
       { label: 'Team Leader', value: 'tl' },
       { label: 'Tele caller', value: 'tc' },
     ]
-    : currentRole === 'tl'
+    : isTeamLeader
       ? [{ label: 'Tele caller', value: 'tc' }]
       : [{ label: 'Team Leader', value: 'tl' }, { label: 'Tele caller', value: 'tc' }]
   const [users, setUsers] = useState([])
@@ -395,7 +385,7 @@ const UserManagement = () => {
               Create, edit, and manage your team members.
             </p>
           </div>
-          {canManageUsers && (
+          {canCreateUsers && (
             <button
               type="button"
               onClick={() => { setEditingUser(null); resetForm(); setIsModalOpen(true); }}

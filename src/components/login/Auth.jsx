@@ -23,10 +23,6 @@ const Auth = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-
-  // Landing page after login = first sidebar menu.
-  // Admin / manager / TL dashboards are hidden for now (static),
-  // so they start on User Management.
   const getDashboardRoute = (role) => {
     switch (role?.toLowerCase()) {
       case "admin":

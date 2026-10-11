@@ -2,8 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
 import { AlertCircle, Search, UserRound, Users } from 'lucide-react'
+import Cookies from 'js-cookie'
+import toast from 'react-hot-toast'
 import TableSkeleton from '../../../components/table/TableSkeleton'
 import { apiGet } from '../../../redux/apiMethods'
+import AssignModal from './AssignModal'
+import LeadStatusUpdateModal from '../../telecaller/sales-management/LeadStatusUpdateModal'
 
 const getLeadRows = (response) => {
   const possibleLists = [
@@ -112,6 +116,11 @@ const GlobalLeadSearch = () => {
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
+  const [isAssigning, setIsAssigning] = useState(false)
+  const [leadToAssign, setLeadToAssign] = useState(null)
+  const [leadToUpdate, setLeadToUpdate] = useState(null)
 
   useEffect(() => {
     if (!number) {
@@ -146,9 +155,62 @@ const GlobalLeadSearch = () => {
     return () => {
       active = false
     }
-  }, [dispatch, number])
+  }, [dispatch, number, refreshKey])
 
   const flattenedLeads = useMemo(() => leads.map((lead) => flattenLead(lead)), [leads])
+
+  const handleAssign = async (_count, userId, selectedLeadIds = []) => {
+    const token = Cookies.get('token')
+    const leadIds = selectedLeadIds.filter(Boolean)
+
+    if (!token) throw new Error('Authorization token not found. Please log in again.')
+    if (!userId) throw new Error('Please select a user to assign this lead to.')
+    if (leadIds.length !== 1) throw new Error('Unable to determine the lead to assign.')
+
+    setIsAssigning(true)
+
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/leads/assign`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          leadIds,
+          assignedTo: userId,
+        }),
+      })
+
+      const responseText = await response.text()
+      let responseData = {}
+
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {}
+      } catch {
+        responseData = {}
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          responseData?.message ||
+          responseData?.error ||
+          responseText ||
+          `Assign failed (${response.status})`
+        )
+      }
+
+      toast.success(responseData?.message || 'Lead assigned successfully.')
+      setRefreshKey((key) => key + 1)
+      return true
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  const handleLeadUpdateSuccess = () => {
+    setRefreshKey((key) => key + 1)
+  }
 
   return (
     <section className="space-y-6">
@@ -202,14 +264,15 @@ const GlobalLeadSearch = () => {
                     {column.label}
                   </th>
                 ))}
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <TableSkeleton columns={LEAD_COLUMNS.length} />
+                <TableSkeleton columns={LEAD_COLUMNS.length + 1} />
               ) : error ? (
                 <tr>
-                  <td colSpan={LEAD_COLUMNS.length} className="px-4 py-14 text-center text-sm text-[var(--muted)]">
+                  <td colSpan={LEAD_COLUMNS.length + 1} className="px-4 py-14 text-center text-sm text-[var(--muted)]">
                     No results to display.
                   </td>
                 </tr>
@@ -230,11 +293,32 @@ const GlobalLeadSearch = () => {
                       </td>
                       )
                     })}
+                    <td className="whitespace-nowrap px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLeadToAssign(leads[index])
+                            setIsAssignModalOpen(true)
+                          }}
+                          className="app-table-btn"
+                        >
+                          Assign
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLeadToUpdate(leads[index])}
+                          className="app-table-btn"
+                        >
+                          Update
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={LEAD_COLUMNS.length} className="px-4 py-14 text-center">
+                  <td colSpan={LEAD_COLUMNS.length + 1} className="px-4 py-14 text-center">
                     <div className="mx-auto flex max-w-sm flex-col items-center">
                       <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-500">
                         <Search size={20} />
@@ -253,6 +337,25 @@ const GlobalLeadSearch = () => {
           </table>
         </div>
       </div>
+
+      <AssignModal
+        open={isAssignModalOpen}
+        onClose={() => {
+          setIsAssignModalOpen(false)
+          setLeadToAssign(null)
+        }}
+        leadsCount={1}
+        onAssign={handleAssign}
+        isAssigning={isAssigning}
+        selectedLeadIds={[leadToAssign?._id || leadToAssign?.id].filter(Boolean)}
+      />
+
+      <LeadStatusUpdateModal
+        isOpen={Boolean(leadToUpdate)}
+        lead={leadToUpdate}
+        onClose={() => setLeadToUpdate(null)}
+        onUpdateSuccess={handleLeadUpdateSuccess}
+      />
     </section>
   )
 }

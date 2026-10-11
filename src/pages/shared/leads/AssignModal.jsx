@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
+import { useAuth } from '../../../hooks/useAuth'
 
 const API_BASE_URL = process.env.REACT_APP_API_URL
 
@@ -36,6 +37,20 @@ const getRoleLabel = (user) => {
   return ROLE_LABELS[role] || role
 }
 
+const normalizeRole = (role) => {
+  const normalized = String(role || '').toLowerCase().trim()
+
+  if (['tl', 'teamleader', 'team leader', 'team-leader', 'team_leader'].includes(normalized)) {
+    return 'tl'
+  }
+
+  if (['tc', 'telecaller', 'tele caller', 'tele-caller'].includes(normalized)) {
+    return 'tc'
+  }
+
+  return normalized
+}
+
 const AssignModal = ({
   open,
   onClose,
@@ -45,8 +60,25 @@ const AssignModal = ({
   isAssigning = false,
   selectedLeadIds = [],
 }) => {
+  const { role: authRole } = useAuth()
+  const currentRole = normalizeRole(authRole)
+  const roleOptions = useMemo(() => (
+    currentRole === 'admin'
+      ? [
+        { label: 'Manager', value: 'manager' },
+        { label: 'Team Leader', value: 'tl' },
+        { label: 'Tele Caller', value: 'tc' },
+      ]
+      : currentRole === 'manager'
+        ? [
+          { label: 'Team Leader', value: 'tl' },
+          { label: 'Tele Caller', value: 'tc' },
+        ]
+        : []
+  ), [currentRole])
   const [assignCount, setAssignCount] = useState(1)
   const [selectedTcId, setSelectedTcId] = useState('')
+  const [selectedRole, setSelectedRole] = useState('')
   const [searchTc, setSearchTc] = useState('')
   const [localError, setLocalError] = useState(null)
 
@@ -139,6 +171,7 @@ const AssignModal = ({
       setSearchTc('')
       setLocalError(null)
       setAssignCount(1)
+      setSelectedRole(currentRole === 'tl' ? 'tc' : '')
 
       fetchUsers()
     }
@@ -146,17 +179,24 @@ const AssignModal = ({
     return () => {
       mounted = false
     }
-  }, [open])
+  }, [open, currentRole])
 
   // Search/filter user list (by name, email or role)
   const filteredUsers = useMemo(() => {
     const search = searchTc.trim().toLowerCase()
-
-    if (!search) {
-      return users
-    }
+    const targetRole = roleOptions.length > 0
+      ? selectedRole
+      : currentRole === 'tl'
+        ? 'tc'
+        : ''
 
     return users.filter((u) => {
+      if (targetRole && normalizeRole(getUserRole(u)) !== targetRole) {
+        return false
+      }
+
+      if (!search) return true
+
       const name = String(
         u?.name ||
           u?.fullName ||
@@ -170,7 +210,14 @@ const AssignModal = ({
 
       return name.includes(search) || email.includes(search) || role.includes(search)
     })
-  }, [users, searchTc])
+  }, [users, searchTc, selectedRole, roleOptions, currentRole])
+
+  const handleRoleChange = (event) => {
+    setSelectedRole(event.target.value)
+    setSelectedTcId('')
+    setSearchTc('')
+    setLocalError(null)
+  }
 
   const handleTcClick = (tcId) => {
     setSelectedTcId(tcId)
@@ -293,6 +340,26 @@ const AssignModal = ({
             Assign to
           </label>
 
+          {roleOptions.length > 0 && (
+            <select
+              value={selectedRole}
+              onChange={handleRoleChange}
+              disabled={isAssigning || usersLoading}
+              className="mb-3 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-[var(--text)] focus:border-[var(--primary)] focus:outline-none disabled:opacity-50"
+            >
+              <option value="">Select role</option>
+              {roleOptions.map(({ label, value }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          )}
+
+          {roleOptions.length > 0 && !selectedRole ? (
+            <div className="rounded-xl border border-[var(--border)] p-4 text-center text-sm text-[var(--muted)]">
+              Select a role to view available users.
+            </div>
+          ) : (
+          <>
           {/* Search Input */}
           <div className="relative mb-3">
             <input
@@ -321,9 +388,8 @@ const AssignModal = ({
             <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-500">
               {usersError}
             </div>
-          ) : users.length > 0 ? (
+          ) : filteredUsers.length > 0 ? (
             <>
-              {filteredUsers.length > 0 ? (
                 <div className="grid max-h-52 grid-cols-1 gap-2 overflow-auto pr-1">
                   {filteredUsers.map((u) => {
                     const tcId = u?._id || u?.id
@@ -380,11 +446,6 @@ const AssignModal = ({
                     )
                   })}
                 </div>
-              ) : (
-                <div className="rounded-xl border border-[var(--border)] p-4 text-center text-sm text-[var(--muted)]">
-                  No user found for "{searchTc}"
-                </div>
-              )}
 
               {/* Result Count */}
               {searchTc.trim() && filteredUsers.length > 0 && (
@@ -394,7 +455,12 @@ const AssignModal = ({
                 </div>
               )}
             </>
-          ) : tcOptions.length > 0 ? (
+          ) : users.length > 0 || tcOptions.length > 0 ? (
+            searchTc.trim() || (roleOptions.length > 0 && selectedRole) ? (
+              <div className="rounded-xl border border-[var(--border)] p-4 text-center text-sm text-[var(--muted)]">
+                {searchTc.trim() ? `No user found for "${searchTc}"` : 'No users available for this role.'}
+              </div>
+            ) : tcOptions.length > 0 ? (
             <select
               value={selectedTcId}
               onChange={(e) => {
@@ -412,10 +478,17 @@ const AssignModal = ({
                 </option>
               ))}
             </select>
+            ) : (
+              <div className="rounded-xl border border-[var(--border)] p-4 text-center text-sm text-[var(--muted)]">
+                No users available.
+              </div>
+            )
           ) : (
             <div className="rounded-xl border border-[var(--border)] p-4 text-center text-sm text-[var(--muted)]">
               No users available.
             </div>
+          )}
+          </>
           )}
         </div>
 

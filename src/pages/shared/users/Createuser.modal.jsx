@@ -6,8 +6,6 @@ import { getId } from './ReportsToCell'
 
 const ROLE_OPTIONS = ['Manager', 'Team Leader', 'Tele caller']
 
-// Role hierarchy: which roles the logged-in user is allowed to create
-// admin -> everyone, manager -> TL + TC, TL -> TC only
 const getCreatableRoles = (currentRole) => {
   const roleKey = String(currentRole || '').toLowerCase().trim()
 
@@ -28,21 +26,16 @@ const getCreatableRoles = (currentRole) => {
 
 const selectClassName = 'w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-4 focus:ring-[rgba(11,116,255,0.12)]'
 
-// Red border + ring when the field is invalid
 const getInputClassName = (hasError, extra = '') =>
   `w-full rounded-2xl border bg-[var(--surface-alt)] px-4 py-3 text-[var(--text)] outline-none transition focus:ring-4 ${extra} ${hasError
     ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
     : 'border-[var(--border)] focus:border-[var(--primary)] focus:ring-[rgba(11,116,255,0.12)]'
   }`
 
-// =====================================
-// VALIDATION
-// =====================================
 
 const NAME_PATTERN = /^[\p{L}\p{M}\d\s.'-]+$/u
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-// Returns { field: message } for every invalid field
 const validateUser = ({ name, email, password, isEditing, users, editingUserId }) => {
   const errors = {}
 
@@ -72,7 +65,6 @@ const validateUser = ({ name, email, password, isEditing, users, editingUserId }
   return errors
 }
 
-// Order fields are focused in when the form has errors
 const FIELD_IDS = { name: 'user-name', email: 'user-email', password: 'user-password' }
 
 const FieldError = ({ field, message }) =>
@@ -108,7 +100,6 @@ const Createusermodal = ({
   onSubmit,
 }) => {
   const [passwordVisible, setPasswordVisible] = useState(false)
-  // Errors show once a field is left, or after a submit attempt
   const [touched, setTouched] = useState({})
   const [submitted, setSubmitted] = useState(false)
 
@@ -134,7 +125,6 @@ const Createusermodal = ({
     'aria-describedby': getError(field) ? `${FIELD_IDS[field]}-error` : undefined,
   })
 
-  // Never hit the server while anything is invalid
   const handleSubmit = (e) => {
     e.preventDefault()
     setSubmitted(true)
@@ -151,14 +141,6 @@ const Createusermodal = ({
 
   const currentRole = String(Cookies.get('role') || '').toLowerCase().trim()
   const creatableRoles = getCreatableRoles(currentRole)
-
-  // =====================================
-  // TEAM PLACEMENT
-  // =====================================
-  // admin   -> picks a manager (or none = direct to admin),
-  //            and for a TC, a TL of that manager
-  // manager -> TL / TC go into their own team; TC can pick a TL
-  // tl      -> TC goes under them automatically
 
   const isAdmin = currentRole === 'admin'
   const isTeamMemberRole = role === 'Team Leader' || role === 'Tele caller'
@@ -189,8 +171,6 @@ const Createusermodal = ({
     return 'Only this manager (and Admin) will be able to see this user.'
   }
 
-  // When editing a user whose role is above the current user's level,
-  // still show that role (disabled) so the select displays the right value
   const roleOptions = creatableRoles.includes(role) || !role
     ? creatableRoles
     : [role, ...creatableRoles]
@@ -201,7 +181,6 @@ const Createusermodal = ({
       onClose={onClose}
       title={isEditing ? 'Edit user' : 'Create new user'}
     >
-      {/* noValidate: our own messages replace the browser's bubbles */}
       <form onSubmit={handleSubmit} noValidate autoComplete="off">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-2">
