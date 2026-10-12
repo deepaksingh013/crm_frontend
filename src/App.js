@@ -10,21 +10,49 @@ import Unauthorized from './components/Unauthorized'
 import Sidebar from './components/sidebar/Sidebar'
 import Header from './components/header/Header'
 
-import Dashboard from './pages/admin/dashboard/Dashboard'
-import UserManagement from './pages/admin/userManagment/UserManagement'
-import CampaignManagment from './pages/admin/campaignManagment/CampaignManagment'
-import LeadDetails from './pages/admin/leadManagment/LeadDetails'
-import Leadmanagment from './pages/admin/leadManagment/Leadmanagment'
-import GlobalLeadSearch from './pages/admin/leadManagment/GlobalLeadSearch'
-import Report from './pages/admin/reports/Report'
+// Hidden for now (static pages) - see RoleDashboard below
+// import Dashboard from './pages/admin/Dashboard'
+// import ManagerDashboard from './pages/manager/Dashboard'
+// import TeamLeaderDashboard from './pages/team-leader/Dashboard'
+// import Report from './pages/shared/reports/Report'
+import TeamReport from './pages/shared/reports/TeamReport'
+import UserManagement from './pages/shared/users/UserManagement'
+import CampaignManagment from './pages/shared/campaigns/CampaignManagment'
+import LeadDetails from './pages/shared/leads/LeadDetails'
+import Leadmanagment from './pages/shared/leads/Leadmanagment'
+import GlobalLeadSearch from './pages/shared/leads/GlobalLeadSearch'
 
 import { setUserFromCookies } from './features/auth/authSlice'
 import CommingSoon from './components/CommingSoon'
 import TcDashboard from './pages/telecaller/dashboard/Dashboard'
-import SalesManagment from './pages/telecaller/salesManagment/SalesManagment'
-import TcList from './pages/admin/telecallerList/TcList'
-import TcDetails from './pages/admin/telecallerList/TcDetails'
-import DeviceManagment from './pages/admin/deviceManagment/DeviceManagment'
+import SalesManagment from './pages/telecaller/sales-management/SalesManagment'
+import TcList from './pages/shared/telecallers/TcList'
+import TcDetails from './pages/shared/telecallers/TcDetails'
+import UserApproval from './pages/shared/user-approval/UserApproval'
+import { useAuth } from './hooks/useAuth'
+
+// Admin / manager / TL dashboards are hidden for now (static),
+// so they go straight to the first sidebar menu: User Management.
+const RoleDashboard = () => {
+  const { role } = useAuth()
+
+  switch (role?.toLowerCase()) {
+    case 'admin':
+    case 'manager':
+    case 'tl':
+    case 'teamleader':
+    case 'team leader':
+      return <Navigate to="/users" replace />
+    case 'tc':
+    case 'telecaller':
+    case 'tele caller':
+    case 'tele-caller':
+    case 'agent':
+      return <TcDashboard />
+    default:
+      return <Navigate to="/login" replace />
+  }
+}
 
 const MainLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -33,7 +61,7 @@ const MainLayout = ({ children }) => {
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-[var(--bg)]">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)} />
-      <div className={`flex min-h-screen min-w-0 flex-col bg-[var(--bg)] transition-[margin] duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[82px]' : 'md:ml-[280px]'}`}>
+      <div className={`flex min-h-screen min-w-0 flex-col bg-[var(--bg)] transition-[margin] duration-300 ease-in-out ${sidebarCollapsed ? 'md:ml-[5.125rem]' : 'md:ml-[17rem]'}`}>
         <Header
           sidebarOpen={sidebarOpen}
           sidebarCollapsed={sidebarCollapsed}
@@ -42,7 +70,7 @@ const MainLayout = ({ children }) => {
           }
         />
 
-        <main className="layout-main min-w-0 flex-1 px-4 pb-5 pt-[100px] sm:px-6 md:px-8 md:pb-7 md:pt-[108px]">
+        <main className="layout-main min-w-0 flex-1 px-3 pb-4 pt-[5.5rem] sm:px-5 md:px-6 md:pb-5 md:pt-[5.75rem]">
           <div className="mx-auto w-full max-w-[1600px]">
             {children}
           </div>
@@ -76,7 +104,7 @@ function App() {
             path="/"
             element={
               <MainLayout>
-                <Dashboard />
+                <RoleDashboard />
               </MainLayout>
             }
           />
@@ -85,7 +113,23 @@ function App() {
             path="/dashboard"
             element={
               <MainLayout>
-                <Dashboard />
+                <RoleDashboard />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/manager/dashboard"
+            element={
+              <MainLayout>
+                <RoleDashboard />
+              </MainLayout>
+            }
+          />
+          <Route
+            path="/tl/dashboard"
+            element={
+              <MainLayout>
+                <RoleDashboard />
               </MainLayout>
             }
           />
@@ -146,18 +190,23 @@ function App() {
             }
           />
           <Route
-            path="/devices"
+            path="/user-approval"
             element={
               <MainLayout>
-                <DeviceManagment />
+                <UserApproval />
               </MainLayout>
             }
           />
           <Route
+            path="/devices"
+            element={<Navigate to="/user-approval" replace />}
+          />
+          {/* Team-wise lead report (admin / manager / TL) */}
+          <Route
             path="/reports"
             element={
               <MainLayout>
-                <Report />
+                <TeamReport />
               </MainLayout>
             }
           />

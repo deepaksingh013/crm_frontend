@@ -69,18 +69,18 @@ const Modal = ({
     >
       <div
         ref={modalRef}
-        className={`relative w-full ${sizeClasses[size]} max-h-[90vh] rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface)] shadow-[0_36px_80px_rgba(15,23,36,0.18)] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300`}
+        className={`relative w-full ${sizeClasses[size]} max-h-[90vh] rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_36px_80px_rgba(15,23,36,0.18)] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
         tabIndex={-1}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] p-6">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-3">
           {title && (
             <h2
               id="modal-title"
-              className="text-2xl font-semibold text-[var(--text)]"
+              className="text-lg font-semibold text-[var(--text)]"
             >
               {title}
             </h2>
@@ -89,7 +89,7 @@ const Modal = ({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="ml-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text)] transition hover:bg-[var(--surface)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text)] transition hover:bg-[var(--surface)] disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Close modal"
           >
             <X size={18} />
@@ -97,7 +97,7 @@ const Modal = ({
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto flex-1 p-6 text-sm text-[var(--muted)]">
+        <div className="overflow-y-auto flex-1 p-5 text-sm text-[var(--muted)]">
           {children}
         </div>
       </div>

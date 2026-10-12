@@ -1,13 +1,15 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { Search, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Upload, Loader2, UserRound, UserPlus, RotateCcw, ArrowRightLeft } from 'lucide-react'
+import { Search, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Upload, Loader2, UserRound, UserPlus, RotateCcw, ArrowRightLeft, X } from 'lucide-react'
 import ImportCampaignModal from './ImportCampaignModal'
 import AssignModal from './AssignModal'
+import LeadStatusUpdateModal from '../../telecaller/sales-management/LeadStatusUpdateModal'
 import Modal from '../../../components/modal/Modal'
 import { useDispatch } from 'react-redux'
 import { apiGet, apiPost } from '../../../redux/apiMethods'
 import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
+import { useIsAdmin } from '../../../hooks/useAuth'
 
 const API_BASE_URL = process.env.REACT_APP_API_URL
 const PAGE_SIZE = 10
@@ -156,8 +158,8 @@ const getPaginationItems = (currentPage, pageCount) => {
   }, [])
 }
 
-const isTelecaller = (user) => {
-  const role = String(
+const getUserRole = (user) =>
+  String(
     user?.role ||
     user?.userRole ||
     user?.user?.role ||
@@ -167,12 +169,26 @@ const isTelecaller = (user) => {
     .toLowerCase()
     .trim()
 
-  return [
-    'tc',
-    'telecaller',
-    'tele caller',
-    'tele-caller',
-  ].includes(role)
+// Leads can be assigned to every user except admins (telecallers, team leaders, managers)
+const isAssignableUser = (user) => getUserRole(user) !== 'admin'
+
+const ROLE_LABELS = {
+  tc: 'Tele Caller',
+  telecaller: 'Tele Caller',
+  'tele caller': 'Tele Caller',
+  'tele-caller': 'Tele Caller',
+  tl: 'Team Leader',
+  teamleader: 'Team Leader',
+  'team leader': 'Team Leader',
+  'team-leader': 'Team Leader',
+  team_leader: 'Team Leader',
+  manager: 'Manager',
+  admin: 'Admin',
+}
+
+const getRoleLabel = (user) => {
+  const role = getUserRole(user)
+  return ROLE_LABELS[role] || role
 }
 
 const getUserId = (user) =>
@@ -192,10 +208,11 @@ const getUserName = (user) =>
   user?.user?.username ||
   user?.email ||
   user?.user?.email ||
-  'Unnamed telecaller'
+  'Unnamed user'
 
 const LeadDetails = () => {
   const dispatch = useDispatch()
+  const isAdmin = useIsAdmin()
   const { id: campaignId } = useParams()
   const location = useLocation()
 
@@ -241,11 +258,19 @@ const LeadDetails = () => {
   const [totalLeads, setTotalLeads] =
     useState(0)
 
+  // Per-status lead counts for the tabs, e.g. { Pending: 50 }
+  const [statusCounts, setStatusCounts] =
+    useState({})
+
   const [page, setPage] =
     useState(1)
 
   const [totalPages, setTotalPages] =
     useState(1)
+
+  const [isLeadUpdateModalOpen, setIsLeadUpdateModalOpen] =
+    useState(false)
+  const [leadToUpdate, setLeadToUpdate] = useState(null)
 
   // Import
   const [isImportModalOpen, setIsImportModalOpen] =
@@ -269,6 +294,28 @@ const LeadDetails = () => {
   const [isTransferring, setIsTransferring] = useState(false)
 
   const transferMode = selectedLeadIds.length > 0 ? 'selected' : 'count'
+
+  // Table filters, also sent with "transfer by count" so the
+  // backend picks exactly the top N rows the table shows
+  const leadFilters = useMemo(() => {
+    const filters = {}
+
+    if (statusFilter) filters.status = statusFilter
+    if (selectedTcId) filters.assignedTo = selectedTcId
+    if (filterQuery.trim()) filters.search = filterQuery.trim()
+
+    // Picked dates are local days, and the Date column shows
+    // local time - so send the exact local start / end of day.
+    if (fromDate || toDate) filters.dateField = 'createdAt'
+    if (fromDate) filters.fromDate = new Date(`${fromDate}T00:00:00`).toISOString()
+    if (toDate) filters.toDate = new Date(`${toDate}T23:59:59.999`).toISOString()
+
+    return filters
+  }, [statusFilter, selectedTcId, filterQuery, fromDate, toDate])
+
+  // Filters the visible rows were loaded with (search is
+  // debounced, so leadFilters can be ahead of the table)
+  const loadedFiltersRef = useRef(leadFilters)
 
   useEffect(() => {
     const fetchTelecallers = async () => {
@@ -311,7 +358,7 @@ const LeadDetails = () => {
           []
 
         const tcUsers = Array.isArray(users)
-          ? users.filter(isTelecaller)
+          ? users.filter(isAssignableUser)
           : []
 
         setTelecallers(tcUsers)
@@ -328,8 +375,9 @@ const LeadDetails = () => {
     fetchTelecallers()
   }, [])
 
+  // Reloaded on every open so new / deleted campaigns show up
   useEffect(() => {
-    if (!isTransferModalOpen || campaignOptions.length > 0) return undefined
+    if (!isTransferModalOpen) return undefined
 
     let active = true
     setCampaignsLoading(true)
@@ -343,7 +391,9 @@ const LeadDetails = () => {
           response,
         ]
         const list = candidates.find(Array.isArray) || []
-        if (active) setCampaignOptions(list)
+        // Deleted campaigns are only marked inactive, and the
+        // backend refuses them as a destination
+        if (active) setCampaignOptions(list.filter((item) => item?.isActive !== false))
       })
       .catch((requestError) => {
         if (active) {
@@ -357,7 +407,7 @@ const LeadDetails = () => {
     return () => {
       active = false
     }
-  }, [campaignOptions.length, dispatch, isTransferModalOpen])
+  }, [dispatch, isTransferModalOpen])
 
   const fetchLeads = useCallback(async (signal) => {
     if (!campaignId) return
@@ -379,59 +429,11 @@ const LeadDetails = () => {
 
     try {
       const params =
-        new URLSearchParams()
-
-      params.append(
-        'page',
-        String(page)
-      )
-
-      params.append(
-        'limit',
-        String(PAGE_SIZE)
-      )
-
-      if (statusFilter) {
-        params.append(
-          'status',
-          statusFilter
-        )
-      }
-
-      if (selectedTcId) {
-        params.append(
-          'assignedTo',
-          selectedTcId
-        )
-      }
-
-      if (filterQuery.trim()) {
-        params.append(
-          'search',
-          filterQuery.trim()
-        )
-      }
-
-      if (fromDate || toDate) {
-        params.append(
-          'dateField',
-          'createdAt'
-        )
-      }
-
-      if (fromDate) {
-        params.append(
-          'fromDate',
-          fromDate
-        )
-      }
-
-      if (toDate) {
-        params.append(
-          'toDate',
-          toDate
-        )
-      }
+        new URLSearchParams({
+          page: String(page),
+          limit: String(PAGE_SIZE),
+          ...leadFilters,
+        })
 
       const queryString =
         params.toString()
@@ -506,6 +508,7 @@ const LeadDetails = () => {
       }
 
       setLeads(leadsData)
+      loadedFiltersRef.current = leadFilters
 
 
       const campaignData =
@@ -558,6 +561,12 @@ const LeadDetails = () => {
         leadsData.length
       )
 
+      setStatusCounts(
+        data?.statusCounts ||
+        data?.data?.statusCounts ||
+        {}
+      )
+
       setTotalPages(
         Math.max(
           Number(pages) || 1,
@@ -576,14 +585,14 @@ const LeadDetails = () => {
     }
   }, [
     campaignId,
-    selectedTcId,
-    statusFilter,
-    filterQuery,
-    fromDate,
-    toDate,
+    leadFilters,
     page,
   ])
 
+  const handleLeadUpdateSuccess = useCallback(() => {
+    setSelectedLeadIds([])
+    fetchLeads()
+  }, [fetchLeads])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -623,9 +632,12 @@ const LeadDetails = () => {
       return
     }
 
+    // Selected: only leads still in this tab's status move.
+    // Count: top N rows of the table as currently filtered.
+    const tableFilters = loadedFiltersRef.current
     const payload = transferMode === 'selected'
-      ? { targetCampaignId, leadIds: selectedLeadIds }
-      : { targetCampaignId, count: Number(transferCount) }
+      ? { targetCampaignId, leadIds: selectedLeadIds, status: tableFilters.status }
+      : { targetCampaignId, count: Number(transferCount), ...tableFilters }
 
     if (transferMode === 'selected' && selectedLeadIds.length === 0) {
       toast.error('Select at least one lead to transfer.')
@@ -647,20 +659,22 @@ const LeadDetails = () => {
       const endpoint = transferMode === 'selected'
         ? `/campaigns/${campaignId}/leads/transfer`
         : `/campaigns/${campaignId}/leads/transfer-by-count`
-      await dispatch(apiPost(endpoint, payload))
+      const response = await dispatch(apiPost(endpoint, payload))
 
-      const transferredCount = transferMode === 'selected'
-        ? selectedLeadIds.length
-        : payload.count
-      const targetCampaign = campaignOptions.find((item) => (
-        String(item._id || item.id || item.campaignId) === String(targetCampaignId)
-      ))
-      const targetName = targetCampaign?.title || targetCampaign?.name || targetCampaign?.campaignName || 'the selected campaign'
+      // What the server actually moved - can be fewer than asked
+      // if some leads changed status since the table loaded
+      const movedCount = Number(response?.data?.movedCount) || 0
+      const skippedCount = transferMode === 'selected'
+        ? response?.data?.notFoundIds?.length || 0
+        : 0
 
       setSelectedLeadIds([])
       setIsTransferModalOpen(false)
       setTransferCount('1')
-      toast.success(`${transferredCount} ${transferredCount === 1 ? 'lead' : 'leads'} transferred to ${targetName}.`)
+      toast.success(response?.message || `${movedCount} ${movedCount === 1 ? 'lead' : 'leads'} transferred.`)
+      if (skippedCount > 0) {
+        toast(`${skippedCount} selected ${skippedCount === 1 ? 'lead was' : 'leads were'} skipped because ${skippedCount === 1 ? 'it is' : 'they are'} no longer in this tab.`)
+      }
       await fetchLeads()
     } catch (requestError) {
       toast.error(requestError.response?.data?.message || requestError.message || 'Failed to transfer leads.')
@@ -781,12 +795,16 @@ const LeadDetails = () => {
           return null
         }
 
+        const roleLabel =
+          getRoleLabel(
+            telecaller
+          )
+
         return {
           id,
-          name:
-            getUserName(
-              telecaller
-            ),
+          name: roleLabel
+            ? `${getUserName(telecaller)} (${roleLabel})`
+            : getUserName(telecaller),
         }
       })
       .filter(Boolean)
@@ -1034,46 +1052,34 @@ const LeadDetails = () => {
       )} of ${totalLeads}`
   const paginationItems = getPaginationItems(page, totalPages)
   return (
-    <div className="min-w-0 space-y-5">
-      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--primary)]">
-            Campaign Leads
-          </p>
-
-          <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-[var(--text)]">
-            {getCampaignTitle(
-              campaign
-            )}
-          </h1>
-
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            View and manage leads for
-            this campaign.
-          </p>
-        </div>
+    <div className="flex min-w-0 flex-col gap-3 md:max-h-[calc(100vh-6.875rem)]">
+      {/* PAGE HEADER */}
+      <div className="flex min-w-0 shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="min-w-0 break-words text-xl font-bold capitalize tracking-tight text-[var(--text)]">
+          {getCampaignTitle(
+            campaign
+          )}
+        </h1>
 
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
 
-          {/* IMPORT */}
-          <button type="button" onClick={() => setIsImportModalOpen( true )}
-            disabled={ isImporting}
-            className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-4"
-          >
-            {isImporting ? (
-              <Loader2 size={17} className="animate-spin" />
-            ) : (
-              <Upload size={17} />
+          {isAdmin && (
+            <button type="button" onClick={() => setIsImportModalOpen(true)}
+              disabled={isImporting}
+              className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+            >
+              {isImporting ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Upload size={15} />
               )}
 
-            {isImporting
-              ? 'Importing...'
-              : 'Import Leads'}
-          </button>
+              {isImporting ? 'Importing...' : 'Import Leads'}
+            </button>
+          )}
 
-          <Link to="/leads" className="inline-flex h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--text)] shadow-sm transition-all hover:bg-[var(--surface-alt)]">
-            <ArrowLeft size={17} />
+          <Link to="/leads" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:bg-[var(--surface-alt)]">
+            <ArrowLeft size={15} />
             <span className="hidden sm:inline">
               Back
             </span>
@@ -1081,76 +1087,105 @@ const LeadDetails = () => {
         </div>
       </div>
 
-      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-3">
-        {/* SEARCH */}
-        <div className="relative">
-          <Search
-            size={18}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-          />
+      {/* TOOLBAR: filters + actions + status tabs */}
+      <div className="shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+        <div className="flex min-w-0 flex-col gap-2 p-2.5 lg:flex-row lg:items-center">
+          <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
+            {/* SEARCH */}
+            <div className="relative">
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+              />
 
-          <input
-            type="text"
-            placeholder="Search leads..."
-            value={
-              filterQuery
-            }
-            onChange={(e) => {
-              setFilterQuery(
-                e.target.value
-              )
-              resetToFirstPage()
-            }}
-            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-10 pr-4 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
-          />
-        </div>
+              <input
+                type="text"
+                placeholder="Search leads..."
+                value={
+                  filterQuery
+                }
+                onChange={(e) => {
+                  setFilterQuery(
+                    e.target.value
+                  )
+                  resetToFirstPage()
+                }}
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
+              />
+            </div>
 
-        <label className="block">
-          <input
-            type="date"
-            aria-label="Created from date"
-            value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value)
-              resetToFirstPage()
-            }}
-            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
-          />
-        </label>
+            {/* FROM / TO DATE (date inputs can't show a placeholder, so label them inside) */}
+            <label className="relative block">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted)]">
+                From
+              </span>
+              <input
+                type="date"
+                aria-label="Created from date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => {
+                  setFromDate(e.target.value)
+                  resetToFirstPage()
+                }}
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] pl-14 pr-14 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
+              />
+              {fromDate && (
+                <button
+                  type="button"
+                  aria-label="Clear from date"
+                  title="Clear"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setFromDate('')
+                    resetToFirstPage()
+                  }}
+                  className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </label>
 
-        <label className="block">
-          <input
-            type="date"
-            aria-label="Created to date"
-            value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value)
-              resetToFirstPage()
-            }}
-            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10"
-          />
-        </label>
-      </div>
+            <label className="relative block">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted)]">
+                To
+              </span>
+              <input
+                type="date"
+                aria-label="Created to date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => {
+                  setToDate(e.target.value)
+                  resetToFirstPage()
+                }}
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] pl-10 pr-14 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:bg-[var(--surface)] focus:ring-2 focus:ring-[var(--primary)]/10"
+              />
+              {toDate && (
+                <button
+                  type="button"
+                  aria-label="Clear to date"
+                  title="Clear"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setToDate('')
+                    resetToFirstPage()
+                  }}
+                  className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </label>
+          </div>
 
-      {!loading &&
-        !error && (
-          <div className="space-y-3">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex items-center gap-3">
-                <p className="text-sm font-medium text-[var(--muted)]">
-                  Total {getStatusLabel(statusFilter)} Leads
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold tracking-tight text-[var(--text)]">
-                    {loading ? '...' : totalLeads}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
-                <div className="relative min-w-0 flex-1 xl:flex-none">
+          {!loading &&
+            !error && (
+              <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:justify-end">
+                <div className="relative min-w-0 basis-full sm:basis-auto sm:flex-1 lg:flex-none">
                   <UserRound
-                    size={17}
+                    size={15}
                     className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[var(--muted)]"
                   />
                   <select
@@ -1170,12 +1205,12 @@ const LeadDetails = () => {
                     disabled={
                       telecallersLoading
                     }
-                    className="h-11 w-full min-w-0 appearance-none rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] outline-none transition-all focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60 xl:min-w-[190px]"
+                    className="h-9 w-full min-w-0 appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] pl-9 pr-9 text-sm font-medium text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60 lg:min-w-[11rem]"
                   >
                     <option value="">
                       {telecallersLoading
                         ? 'Loading TC...'
-                        : 'All Telecallers'}
+                        : 'All Users'}
                     </option>
 
                     {telecallers.map(
@@ -1199,6 +1234,9 @@ const LeadDetails = () => {
                             {getUserName(
                               telecaller
                             )}
+                            {getRoleLabel(telecaller)
+                              ? ` (${getRoleLabel(telecaller)})`
+                              : ''}
                           </option>
                         ) : null
                       }
@@ -1206,7 +1244,7 @@ const LeadDetails = () => {
                   </select>
 
                   <ChevronDown
-                    size={16}
+                    size={14}
                     className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
                   />
                 </div>
@@ -1222,33 +1260,36 @@ const LeadDetails = () => {
 
                       resetToFirstPage()
                     }}
-                    title="Clear telecaller filter"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition-all hover:bg-[var(--surface-alt)] hover:text-[var(--text)]"
+                    title="Clear user filter"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-alt)] hover:text-[var(--text)]"
                   >
                     <RotateCcw
-                      size={16}
+                      size={14}
                     />
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTargetCampaignId('')
-                    setTransferCount('1')
-                    setIsTransferModalOpen(true)
-                  }}
-                  disabled={isTransferring}
-                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:border-[var(--primary)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ArrowRightLeft size={17} />
-                  Transfer Leads
-                  {selectedLeadCount > 0 && (
-                    <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 text-xs text-[var(--primary)]">
-                      {selectedLeadCount}
-                    </span>
-                  )}
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTargetCampaignId('')
+                      setTransferCount('1')
+                      setIsTransferModalOpen(true)
+                    }}
+                    // Wait for the table, so the count matches its filters
+                    disabled={isTransferring || loading}
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] shadow-sm transition hover:border-[var(--primary)] hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ArrowRightLeft size={15} />
+                    Transfer Leads
+                    {selectedLeadCount > 0 && (
+                      <span className="rounded-full bg-blue-50 px-1.5 py-px text-xs text-[var(--primary)]">
+                        {selectedLeadCount}
+                      </span>
+                    )}
+                  </button>
+                )}
 
                 {/* ASSIGN */}
                 <button
@@ -1261,16 +1302,16 @@ const LeadDetails = () => {
                   disabled={
                     isAssigning
                   }
-                  className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                  className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[var(--primary)] px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isAssigning ? (
                     <Loader2
-                      size={17}
+                      size={15}
                       className="animate-spin"
                     />
                   ) : (
                     <UserPlus
-                      size={17}
+                      size={15}
                     />
                   )}
 
@@ -1282,7 +1323,7 @@ const LeadDetails = () => {
 
                   {selectedLeadCount >
                     0 && (
-                      <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+                      <span className="rounded-full bg-white/20 px-1.5 py-px text-xs">
                         {
                           selectedLeadCount
                         }
@@ -1290,36 +1331,61 @@ const LeadDetails = () => {
                     )}
                 </button>
               </div>
-            </div>
+            )}
+        </div>
 
-            <div className="flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1">
-              {STATUS_TABS.map(({ value, label }) => {
-                const isActive = statusFilter === value
+        {!loading &&
+          !error && (
+            <div className="flex min-w-0 flex-col gap-2 border-t border-[var(--border)] px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex max-w-full flex-wrap items-center gap-0.5 rounded-lg bg-[var(--surface-alt)] p-0.5">
+                {STATUS_TABS.map(({ value, label }) => {
+                  const isActive = statusFilter === value
+                  const count = statusCounts[value]
 
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter(value)
-                      resetToFirstPage()
-                    }}
-                    className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${isActive
-                        ? 'bg-[var(--primary)] text-white shadow-sm'
-                        : 'text-[var(--muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)]'
-                      }`}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(value)
+                        resetToFirstPage()
+                      }}
+                      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${isActive
+                          ? 'bg-[var(--surface)] text-[var(--primary)] shadow-sm ring-1 ring-[var(--border)]'
+                          : 'text-[var(--muted)] hover:text-[var(--text)]'
+                        }`}
+                    >
+                      {label}
+                      {typeof count === 'number' && (
+                        <span
+                          className={`rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums ${isActive
+                              ? 'bg-blue-50 text-[var(--primary)]'
+                              : 'bg-[var(--surface)] text-[var(--muted)]'
+                            }`}
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium text-[var(--muted)]">
+                  Total {getStatusLabel(statusFilter)} Leads
+                </p>
+                <span className="rounded-md bg-blue-50 px-2 py-0.5 text-sm font-bold tabular-nums text-[var(--primary)]">
+                  {loading ? '...' : totalLeads}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+      </div>
 
       {!loading &&
         error && (
-          <div className="rounded-2xl border border-red-200 bg-[var(--surface)] px-6 py-12 text-center">
+          <div className="shrink-0 rounded-xl border border-red-200 bg-[var(--surface)] px-6 py-8 text-center">
 
             <p className="text-sm font-semibold text-red-500">
               Failed to load leads
@@ -1344,12 +1410,12 @@ const LeadDetails = () => {
         )}
 
       {!error && (
-        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
-          <div className={`max-w-full overflow-x-auto overscroll-x-contain lead-table-scroll ${loading ? 'lead-table-loading' : ''}`}>
-            <table className="lead-table w-full min-w-0 border-collapse text-left text-sm md:min-w-[1150px]">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--surface-alt)]">
-                  <th className="px-4 py-4">
+        <div className="app-table-card flex min-h-0 flex-col md:min-h-[16rem]">
+          <div className={`max-w-full overflow-x-auto overscroll-x-contain md:min-h-0 md:flex-1 md:overflow-y-auto lead-table-scroll ${loading ? 'lead-table-loading' : ''}`}>
+            <table className="lead-table app-table min-w-0 md:min-w-[64rem]">
+              <thead className="md:sticky md:top-0 md:z-10 md:shadow-[0_1px_0_var(--border)]">
+                <tr>
+                  <th className="px-3 py-2.5">
                     <label className="flex items-center justify-center">
                       <input
                         type="checkbox"
@@ -1363,54 +1429,54 @@ const LeadDetails = () => {
                       />
                     </label>
                   </th>
-                  <th className="px-4 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Date
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Name
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Mobile No
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Pin code
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Address
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
-                    TC Name
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    Assigned To
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Status
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Last Activity
                   </th>
-                  <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                  <th className="whitespace-nowrap px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--muted)]">
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--border)]">
+              <tbody>
                 {loading ? (
                   Array.from({ length: 6 }).map((_, index) => (
-                    <tr key={`loading-${index}`} className="animate-pulse">
-                      <td className="px-4 py-4"><span className="lead-skeleton block h-4 w-4 rounded" /></td>
-                      <td className="px-4 py-4"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-28 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-12 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-6 w-20 rounded-full" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-4 w-32 rounded" /></td>
-                      <td className="px-6 py-4"><span className="lead-skeleton block h-7 w-14 rounded-lg" /></td>
+                    <tr key={`loading-${index}`} className="app-table-skeleton">
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-4 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-28 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-12 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-20 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-24 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-6 w-20 rounded-full" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-4 w-32 rounded" /></td>
+                      <td className="px-3 py-2.5"><span className="lead-skeleton block h-7 w-14 rounded-lg" /></td>
                     </tr>
                   ))
                 ) : leads.length === 0 ? (
                   <tr className="lead-empty-row">
-                    <td colSpan="10" className="px-6 py-16 text-center">
+                    <td colSpan="10" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <Search
                           size={24}
@@ -1449,7 +1515,7 @@ const LeadDetails = () => {
                             : ''
                           }`}
                       >
-                        <td data-label="Select" className="px-4 py-4 text-center">
+                        <td data-label="Select" className="px-3 py-2 text-center">
                           <input
                             type="checkbox"
                             checked={
@@ -1466,28 +1532,28 @@ const LeadDetails = () => {
                             className="h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
                           />
                         </td>
-                        <td data-label="Date" className="whitespace-nowrap px-4 py-4 text-[var(--muted)]">
+                        <td data-label="Date" className="whitespace-nowrap px-3 py-2 text-[var(--muted)]">
                           {formatDate(
                             row.createdAt
                           )}
                         </td>
-                        <td data-label="Name" className="px-6 py-4">
-                          <span className="font-semibold text-[var(--text)]">
+                        <td data-label="Name" className="px-3 py-2">
+                          <span className="block max-w-[14rem] truncate font-semibold text-[var(--text)]" title={row.name || ''}>
                             {row.name ||
                               'N/A'}
                           </span>
                         </td>
-                        <td data-label="Mobile No" className="px-6 py-4 text-[var(--muted)]">
+                        <td data-label="Mobile No" className="whitespace-nowrap px-3 py-2 tabular-nums text-[var(--text)]">
                           {row.mobile ||
                             'N/A'}
                         </td>
-                        <td data-label="Pin code" className="px-6 py-4 text-[var(--muted)]">
+                        <td data-label="Pin code" className="whitespace-nowrap px-3 py-2 text-[var(--muted)]">
                           {row.pincode ||
                             'N/A'}
                         </td>
                         <td
                           data-label="Address"
-                          className="max-w-xs truncate px-6 py-4 text-[var(--muted)]"
+                          className="max-w-[14rem] truncate px-3 py-2 text-[var(--muted)]"
                           title={
                             row.address ||
                             ''
@@ -1496,11 +1562,11 @@ const LeadDetails = () => {
                           {row.address ||
                             'N/A'}
                         </td>
-                        <td data-label="TC Name" className="px-6 py-4">
+                        <td data-label="Assigned To" className="whitespace-nowrap px-3 py-2">
                           {row.assignedTo
                             ?.name ? (
-                            <div className="inline-flex items-center gap-2">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)]/10">
+                            <div className="inline-flex items-center gap-1.5">
+                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50">
                                 <UserRound
                                   size={
                                     14
@@ -1508,13 +1574,20 @@ const LeadDetails = () => {
                                   className="text-[var(--primary)]"
                                 />
                               </div>
-                              <span className="font-medium text-[var(--text)]">
-                                {
-                                  row
-                                    .assignedTo
-                                    .name
-                                }
-                              </span>
+                              <div className="flex flex-col leading-tight">
+                                <span className="font-medium text-[var(--text)]">
+                                  {
+                                    row
+                                      .assignedTo
+                                      .name
+                                  }
+                                </span>
+                                {getRoleLabel(row.assignedTo) && (
+                                  <span className="text-[0.7rem] text-[var(--muted)]">
+                                    {getRoleLabel(row.assignedTo)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           ) : (
                             <span className="text-[var(--muted)]">
@@ -1522,9 +1595,9 @@ const LeadDetails = () => {
                             </span>
                           )}
                         </td>
-                        <td data-label="Status" className="px-6 py-4">
+                        <td data-label="Status" className="px-3 py-2">
                           <span
-                            className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusClass(
                               row.status
                             )}`}
                           >
@@ -1533,7 +1606,7 @@ const LeadDetails = () => {
                             )}
                           </span>
                         </td>
-                        <td data-label="Last Activity" className="whitespace-nowrap px-6 py-4 text-[var(--muted)]">
+                        <td data-label="Last Activity" className="whitespace-nowrap px-3 py-2 text-[var(--muted)]">
                           {formatDateTime(
                             row.activityAt ||
                             row.lastActivityAt ||
@@ -1541,12 +1614,27 @@ const LeadDetails = () => {
                             row.updatedAt ||
                             row.createdAt
                           )}
+                          {row.lastUpdatedBy?.name && (
+                            <div
+                              className="mt-0.5 text-xs text-[var(--muted)]"
+                              title={formatDateTime(row.lastUpdatedAt)}
+                            >
+                              Updated by{' '}
+                              <span className="font-semibold text-[var(--text)]">
+                                {row.lastUpdatedBy.name}
+                              </span>{' '}
+                              ({getRoleLabel(row.lastUpdatedBy)})
+                            </div>
+                          )}
                         </td>
-                        <td data-label="Action" className="px-6 py-4">
+                        <td data-label="Action" className="px-3 py-2">
                           <button
                             type="button"
-                            disabled
-                            className="cursor-not-allowed rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white opacity-60 shadow-sm"
+                            onClick={() => {
+                              setLeadToUpdate(row)
+                              setIsLeadUpdateModalOpen(true)
+                            }}
+                            className="app-table-btn"
                           >
                             Update
                           </button>
@@ -1560,7 +1648,7 @@ const LeadDetails = () => {
             </table>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-[var(--border)] px-4 py-4 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="flex shrink-0 flex-col gap-2 border-t border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
             <span className="font-medium text-[var(--muted)]">
               {displayedRange}
             </span>
@@ -1581,14 +1669,14 @@ const LeadDetails = () => {
                   page === 1
                 }
                 aria-label="Previous page"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft
-                  size={17}
+                  size={15}
                 />
               </button>
               {paginationItems.map((item) => item.type === 'ellipsis' ? (
-                <span key={item.key} aria-hidden="true" className="flex h-9 min-w-7 items-center justify-center text-sm text-[var(--muted)]">
+                <span key={item.key} aria-hidden="true" className="flex h-8 min-w-6 items-center justify-center text-xs text-[var(--muted)]">
                   ...
                 </span>
               ) : (
@@ -1598,7 +1686,7 @@ const LeadDetails = () => {
                   onClick={() => setPage(item.value)}
                   aria-label={`Page ${item.value}`}
                   aria-current={page === item.value ? 'page' : undefined}
-                  className={`h-9 min-w-9 rounded-lg border px-2 text-sm font-semibold transition-colors ${page === item.value
+                  className={`h-8 min-w-8 rounded-md border px-2 text-xs font-semibold transition-colors ${page === item.value
                     ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
                     : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-alt)]'
                     }`}
@@ -1623,10 +1711,10 @@ const LeadDetails = () => {
                   totalPages
                 }
                 aria-label="Next page"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--surface-alt)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronRight
-                  size={17}
+                  size={15}
                 />
               </button>
 
@@ -1660,14 +1748,14 @@ const LeadDetails = () => {
         }
       />
 
-      <Modal
+      {isAdmin && <Modal
         open={isTransferModalOpen}
         title="Transfer leads to another campaign"
         size="md"
         onClose={() => setIsTransferModalOpen(false)}
         isLoading={isTransferring}
       >
-        <form onSubmit={handleTransferLeads} className="space-y-5">
+        <form onSubmit={handleTransferLeads} className="space-y-4">
           <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
             <p className="text-sm font-semibold text-blue-900">
               {transferMode === 'selected' ? 'Transfer selected leads' : 'Transfer by count'}
@@ -1675,7 +1763,10 @@ const LeadDetails = () => {
             <p className="mt-1 text-xs text-blue-800">
               {transferMode === 'selected'
                 ? `${selectedLeadIds.length} selected ${selectedLeadIds.length === 1 ? 'lead' : 'leads'} will be transferred.`
-                : `No leads are selected. Choose how many ${getStatusLabel(statusFilter).toLowerCase()} leads to transfer.`}
+                : `No leads are selected. The top ${getStatusLabel(statusFilter).toLowerCase()} leads of the table (with the current filters) will be transferred.`}
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              Only {getStatusLabel(statusFilter).toLowerCase()} leads are moved. In the destination campaign they become New and unassigned.
             </p>
           </div>
 
@@ -1688,7 +1779,7 @@ const LeadDetails = () => {
               onChange={(event) => setTargetCampaignId(event.target.value)}
               disabled={campaignsLoading || isTransferring}
               required
-              className="h-11 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-9 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="">
                 {campaignsLoading ? 'Loading campaigns...' : 'Choose a campaign'}
@@ -1735,10 +1826,10 @@ const LeadDetails = () => {
                 onChange={(event) => setTransferCount(event.target.value)}
                 disabled={isTransferring}
                 required
-                className="h-11 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:opacity-60"
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 disabled:opacity-60"
               />
               <span className="mt-1 block text-xs text-[var(--muted)]">
-                Up to {totalLeads} leads are available in the {getStatusLabel(statusFilter).toLowerCase()} tab.
+                Up to {totalLeads} {getStatusLabel(statusFilter).toLowerCase()} {totalLeads === 1 ? 'lead is' : 'leads are'} available with the current filters.
               </span>
             </label>
           )}
@@ -1748,7 +1839,7 @@ const LeadDetails = () => {
               type="button"
               onClick={() => setIsTransferModalOpen(false)}
               disabled={isTransferring}
-              className="h-10 rounded-lg border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-alt)] disabled:opacity-50"
+              className="h-9 rounded-lg border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-alt)] disabled:opacity-50"
             >
               Cancel
             </button>
@@ -1757,16 +1848,16 @@ const LeadDetails = () => {
               disabled={isTransferring || campaignsLoading || !targetCampaignId || (
                 transferMode === 'selected' ? selectedLeadIds.length === 0 : totalLeads === 0
               )}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isTransferring ? <Loader2 size={16} className="animate-spin" /> : <ArrowRightLeft size={16} />}
               {isTransferring ? 'Transferring...' : 'Transfer leads'}
             </button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
 
-      <ImportCampaignModal
+      {isAdmin && <ImportCampaignModal
         open={
           isImportModalOpen
         }
@@ -1784,6 +1875,17 @@ const LeadDetails = () => {
         isLoading={
           isImporting
         }
+      />}
+
+      <LeadStatusUpdateModal
+        isOpen={isLeadUpdateModalOpen}
+        lead={leadToUpdate}
+        campaignId={campaignId}
+        onClose={() => {
+          setIsLeadUpdateModalOpen(false)
+          setLeadToUpdate(null)
+        }}
+        onUpdateSuccess={handleLeadUpdateSuccess}
       />
 
     </div>

@@ -88,13 +88,13 @@ const Header = ({
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-20 shrink-0 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur-xl transition-[left,width] duration-300 sm:px-6 md:px-8 ${
+      className={`fixed inset-x-0 top-0 z-20 shrink-0 border-b border-slate-200/80 bg-white/90 px-4 py-2 backdrop-blur-xl transition-[left,width] duration-300 sm:px-6 md:px-8 ${
         sidebarCollapsed
-          ? 'md:left-[82px] md:w-[calc(100%-82px)]'
-          : 'md:left-[280px] md:w-[calc(100%-280px)]'
+          ? 'md:left-[5.125rem] md:w-[calc(100%-5.125rem)]'
+          : 'md:left-[17rem] md:w-[calc(100%-17rem)]'
       }`}
     >
-      <div className="flex min-h-[56px] w-full items-center justify-between gap-4">
+      <div className="flex min-h-[3rem] w-full items-center justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           {/* Mobile menu */}
           <button
@@ -111,8 +111,8 @@ const Header = ({
           </button>
 
           {/* Search */}
-          <div className="relative w-full max-w-[520px]">
-            <div role="search" className="header-search flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition focus-within:border-blue-300 focus-within:bg-white sm:px-4">
+          <div className="relative w-full max-w-[32.5rem]">
+            <div role="search" className="header-search flex h-10 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition focus-within:border-blue-300 focus-within:bg-white sm:px-4">
               <Search
                 size={18}
                 className="shrink-0 text-slate-400"
@@ -206,7 +206,7 @@ const Header = ({
               />
             </button>
             {showUserMenu && (
-              <div className="absolute right-0 top-full z-50 mt-3 w-[280px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10">
+              <div className="absolute right-0 top-full z-50 mt-3 w-[17.5rem] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10">
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 px-5 py-5">
                   <div className="flex items-center gap-3">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 font-bold text-white shadow-md">

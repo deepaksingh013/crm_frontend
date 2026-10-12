@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Eye, Loader2, AlertCircle, Search } from 'lucide-react'
+import { Eye, AlertCircle, Search } from 'lucide-react'
+import TableSkeleton from '../../../components/table/TableSkeleton'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
 import Cookies from 'js-cookie'
@@ -79,50 +80,43 @@ const Leadmanagment = () => {
           </div>
         </div>
       )}
-      <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
+      <div className="app-table-card">
         <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse text-left text-sm">
+          <table className="app-table min-w-full">
             <thead>
               <tr className="border-b border-[var(--border)]">
-                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                <th>
                   Campaign
                 </th>
-                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                <th>
                   New leads
                 </th>
-                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                <th>
                   Pending
                 </th>
-                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                <th>
                   Not contacted
                 </th>
-                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                <th>
                   Completed
                 </th>
-                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                <th>
                   Holding
                 </th>
-                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                <th>
                   Rejected
                 </th>
-                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                <th>
                   Total
                 </th>
-                <th className="px-6 py-4 font-semibold text-[var(--muted)]">
+                <th>
                   Action
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border)]">
+            <tbody>
               {isLoading ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center">
-                    <div className="flex items-center justify-center gap-2 text-[var(--muted)]">
-                      <Loader2 size={20} className="animate-spin" />
-                      <span>Loading campaigns...</span>
-                    </div>
-                  </td>
-                </tr>
+                <TableSkeleton columns={9} />
               ) : error ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-red-500">
@@ -140,46 +134,46 @@ const Leadmanagment = () => {
                   const notConnected = statusCount.notConnected || 0
 
                   return (
-                    <tr key={campaign.campaignId} className="hover:bg-[var(--surface-alt)]">
-                      <td className="px-6 py-4">
+                    <tr key={campaign.campaignId}>
+                      <td>
                         <Link to={`/leads/${campaign.campaignId}`} state={{ campaignName: campaign.campaignName,}}
                           className="font-medium text-[var(--text)] hover:text-[var(--primary)]">
                           {campaign.campaignName}
                         </Link>
                       </td>
-                      <td className="px-6 py-4 text-[var(--muted)]">
+                      <td className="tabular-nums text-[var(--muted)]">
                         {newLeads}
                       </td>
-                      <td className="px-6 py-4 text-[var(--muted)]">
+                      <td className="tabular-nums text-[var(--muted)]">
                         {pending}
                       </td>
-                      <td className="px-6 py-4 text-[var(--muted)]">
+                      <td className="tabular-nums text-[var(--muted)]">
                         {notConnected}
                       </td>
-                      <td className="px-6 py-4 text-[var(--muted)]">
+                      <td className="tabular-nums text-[var(--muted)]">
                         {complete}
                       </td>
-                      <td className="px-6 py-4 text-[var(--muted)]">
+                      <td className="tabular-nums text-[var(--muted)]">
                         {holding}
                       </td>
-                      <td className="px-6 py-4 text-[var(--muted)]">
+                      <td className="tabular-nums text-[var(--muted)]">
                         {reject}
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex rounded-full bg-[rgba(11,116,255,0.12)] px-3 py-1 text-sm font-semibold text-[var(--primary)]">
+                      <td>
+                        <span className="app-table-count">
                           {campaign.totalLeads || 0}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td>
                         <Link
                           to={`/leads/${campaign.campaignId}`}
                           state={{
                             campaignName: campaign.campaignName,
                           }}
                           aria-label={`View ${campaign.campaignName}`}
-                          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                          className="app-table-btn focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                         >
-                          <Eye size={16} />
+                          <Eye size={14} />
                           <span>View</span>
                         </Link>
                       </td>

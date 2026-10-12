@@ -9,7 +9,7 @@ const CommingSoon = () => {
       justifyContent: 'center',
       height: '80vh',
       textAlign: 'center',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: "'Poppins', sans-serif",
       backgroundColor: '#f8f9fa'
     }}>
       <h1 style={{

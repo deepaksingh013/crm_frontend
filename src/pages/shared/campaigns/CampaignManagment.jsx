@@ -6,7 +6,7 @@ import DynamicTable from '../../../components/table/DynamicTable'
 import Modal from '../../../components/modal/Modal'
 import toast from 'react-hot-toast'
 import ConfirmationModal from './ConfirmationModal'
-import ImportCampaignModal from '../leadManagment/ImportCampaignModal'
+import ImportCampaignModal from '../leads/ImportCampaignModal'
 import { apiGet, apiPost, apiPatch, apiDelete } from '../../../redux/apiMethods'
 import { resetApiState } from '../../../redux/apiSlice'
 

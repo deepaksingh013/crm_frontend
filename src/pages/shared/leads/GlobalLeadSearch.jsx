@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
-import { AlertCircle, Loader2, Search, UserRound, Users } from 'lucide-react'
+import { AlertCircle, Search, UserRound, Users } from 'lucide-react'
+import Cookies from 'js-cookie'
+import toast from 'react-hot-toast'
+import TableSkeleton from '../../../components/table/TableSkeleton'
 import { apiGet } from '../../../redux/apiMethods'
+import AssignModal from './AssignModal'
+import LeadStatusUpdateModal from '../../telecaller/sales-management/LeadStatusUpdateModal'
 
 const getLeadRows = (response) => {
   const possibleLists = [
@@ -57,7 +62,7 @@ const LEAD_COLUMNS = [
   { label: 'City', keys: ['city', 'town'] },
   { label: 'Pincode', keys: ['pincode', 'pinCode', 'postalCode', 'zipCode'] },
   { label: 'Address', keys: ['address', 'customerAddress', 'fullAddress', 'location', 'address.line1', 'address.addressLine', 'address.street'] },
-  { label: 'TC Name', keys: ['tcName', 'telecallerName', 'assignedTo.name', 'assignedTo.fullName', 'telecaller.name', 'tc.name', 'assignedUser.name'] },
+  { label: 'Assigned To', keys: ['tcName', 'telecallerName', 'assignedTo.name', 'assignedTo.fullName', 'telecaller.name', 'tc.name', 'assignedUser.name'] },
   { label: 'Status', keys: ['status', 'leadStatus', 'state', 'lead_state'] },
 ]
 
@@ -111,6 +116,11 @@ const GlobalLeadSearch = () => {
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
+  const [isAssigning, setIsAssigning] = useState(false)
+  const [leadToAssign, setLeadToAssign] = useState(null)
+  const [leadToUpdate, setLeadToUpdate] = useState(null)
 
   useEffect(() => {
     if (!number) {
@@ -145,9 +155,62 @@ const GlobalLeadSearch = () => {
     return () => {
       active = false
     }
-  }, [dispatch, number])
+  }, [dispatch, number, refreshKey])
 
   const flattenedLeads = useMemo(() => leads.map((lead) => flattenLead(lead)), [leads])
+
+  const handleAssign = async (_count, userId, selectedLeadIds = []) => {
+    const token = Cookies.get('token')
+    const leadIds = selectedLeadIds.filter(Boolean)
+
+    if (!token) throw new Error('Authorization token not found. Please log in again.')
+    if (!userId) throw new Error('Please select a user to assign this lead to.')
+    if (leadIds.length !== 1) throw new Error('Unable to determine the lead to assign.')
+
+    setIsAssigning(true)
+
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/leads/assign`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          leadIds,
+          assignedTo: userId,
+        }),
+      })
+
+      const responseText = await response.text()
+      let responseData = {}
+
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {}
+      } catch {
+        responseData = {}
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          responseData?.message ||
+          responseData?.error ||
+          responseText ||
+          `Assign failed (${response.status})`
+        )
+      }
+
+      toast.success(responseData?.message || 'Lead assigned successfully.')
+      setRefreshKey((key) => key + 1)
+      return true
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  const handleLeadUpdateSuccess = () => {
+    setRefreshKey((key) => key + 1)
+  }
 
   return (
     <section className="space-y-6">
@@ -176,7 +239,7 @@ const GlobalLeadSearch = () => {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-sm">
+      <div className="app-table-card">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-sm font-semibold text-[var(--text)]">Matching leads</h2>
@@ -193,35 +256,29 @@ const GlobalLeadSearch = () => {
         </div>
 
         <div className="max-h-[65vh] overflow-auto">
-          <table className="min-w-full border-collapse text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-50">
+          <table className="app-table min-w-full">
+            <thead className="sticky top-0 z-10">
               <tr className="border-b border-[var(--border)]">
                 {LEAD_COLUMNS.map((column) => (
-                  <th key={column.label} className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase text-slate-500 sm:px-5">
+                  <th key={column.label}>
                     {column.label}
                   </th>
                 ))}
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border)]">
+            <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={LEAD_COLUMNS.length} className="px-4 py-14 text-center text-sm text-[var(--muted)]">
-                    <span className="inline-flex items-center gap-2">
-                      <Loader2 size={18} className="animate-spin" />
-                      Searching leads...
-                    </span>
-                  </td>
-                </tr>
+                <TableSkeleton columns={LEAD_COLUMNS.length + 1} />
               ) : error ? (
                 <tr>
-                  <td colSpan={LEAD_COLUMNS.length} className="px-4 py-14 text-center text-sm text-[var(--muted)]">
+                  <td colSpan={LEAD_COLUMNS.length + 1} className="px-4 py-14 text-center text-sm text-[var(--muted)]">
                     No results to display.
                   </td>
                 </tr>
               ) : flattenedLeads.length > 0 ? (
                 flattenedLeads.map((lead, index) => (
-                  <tr key={lead._id || lead.id || index} className="transition-colors hover:bg-slate-50">
+                  <tr key={lead._id || lead.id || index}>
                     {LEAD_COLUMNS.map((column) => {
                       const value = getLeadField(lead, column.keys)
                       const displayValue = column.label === 'Created Date'
@@ -229,18 +286,39 @@ const GlobalLeadSearch = () => {
                         : formatValue(value)
 
                       return (
-                      <td key={column.label} className="max-w-[360px] whitespace-nowrap px-4 py-3 align-top text-slate-700 sm:px-5">
+                      <td key={column.label} className="max-w-[22rem] whitespace-nowrap text-slate-700">
                         <span title={displayValue} className="block truncate">
                           {displayValue}
                         </span>
                       </td>
                       )
                     })}
+                    <td className="whitespace-nowrap px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLeadToAssign(leads[index])
+                            setIsAssignModalOpen(true)
+                          }}
+                          className="app-table-btn"
+                        >
+                          Assign
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLeadToUpdate(leads[index])}
+                          className="app-table-btn"
+                        >
+                          Update
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={LEAD_COLUMNS.length} className="px-4 py-14 text-center">
+                  <td colSpan={LEAD_COLUMNS.length + 1} className="px-4 py-14 text-center">
                     <div className="mx-auto flex max-w-sm flex-col items-center">
                       <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-500">
                         <Search size={20} />
@@ -259,6 +337,25 @@ const GlobalLeadSearch = () => {
           </table>
         </div>
       </div>
+
+      <AssignModal
+        open={isAssignModalOpen}
+        onClose={() => {
+          setIsAssignModalOpen(false)
+          setLeadToAssign(null)
+        }}
+        leadsCount={1}
+        onAssign={handleAssign}
+        isAssigning={isAssigning}
+        selectedLeadIds={[leadToAssign?._id || leadToAssign?.id].filter(Boolean)}
+      />
+
+      <LeadStatusUpdateModal
+        isOpen={Boolean(leadToUpdate)}
+        lead={leadToUpdate}
+        onClose={() => setLeadToUpdate(null)}
+        onUpdateSuccess={handleLeadUpdateSuccess}
+      />
     </section>
   )
 }
