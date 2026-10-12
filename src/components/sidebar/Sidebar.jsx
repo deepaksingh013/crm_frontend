@@ -1,13 +1,31 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation, } from 'react-router-dom'
-import { Users2, ListCheck, Podium, X, ChevronLeft, ChevronRight, MonitorCog, LogOut, CircleUser, } from 'lucide-react'
+import { Users2, ListCheck, Podium, X, ChevronLeft, ChevronRight, CheckCircle2, LogOut, CircleUser, Network, } from 'lucide-react'
 import axios from 'axios'
 import Cookies from 'js-cookie'
 import ConfirmationModal from './ConfirmationModal'
+import { useAuth } from '../../hooks/useAuth'
 
 const API_URL = process.env.REACT_APP_API_URL
 
+// Team lead report - admin, manager and TL (not TC)
+const REPORTS_ITEM = {
+  label: 'Reports',
+  path: '/reports',
+  icon: Network,
+  permission: 'reports',
+}
+
+// Dashboard is hidden for now (static page).
+// After login admin / manager / TL land on the first item here.
+// Telecallers use AGENT_MENU, so Reports never shows for them.
 const ADMIN_MENU = [
+  // {
+  //   label: 'Dashboard',
+  //   path: '/dashboard',
+  //   icon: Podium,
+  //   permission: 'dashboard',
+  // },
   {
     label: 'User Management',
     path: '/users',
@@ -33,53 +51,67 @@ const ADMIN_MENU = [
     permission: 'telecallers',
   },
   {
-    label: 'Device Management',
-    path: '/devices',
-    icon: MonitorCog,
-    permission: 'devices',
+    label: 'User Approval',
+    path: '/user-approval',
+    icon: CheckCircle2,
+    permission: 'userApproval',
   },
+  REPORTS_ITEM,
 ]
 
 const MANAGER_MENU = [
   {
     label: 'User Management',
-    path: '/commingsoon',
+    path: '/users',
     icon: Users2,
     permission: 'users',
   },
   {
-    label: 'Campaigns',
-    path: '/commingsoon',
-    icon: Podium,
-    permission: 'campaigns',
-  },
-  {
     label: 'Leads',
-    path: '/commingsoon',
+    path: '/leads',
     icon: ListCheck,
     permission: 'leads',
   },
   {
-    label: 'Device Management',
-    path: '/commingsoon',
-    icon: MonitorCog,
-    permission: 'devices',
+    label: 'Telecaller List',
+    path: '/telecallers',
+    icon: CircleUser,
+    permission: 'telecallers',
   },
+  {
+    label: 'User Approval',
+    path: '/user-approval',
+    icon: CheckCircle2,
+    permission: 'userApproval',
+  },
+  REPORTS_ITEM,
 ]
-
 const TL_MENU = [
-  {
-    label: 'Campaigns',
-    path: '/commingsoon',
-    icon: Podium,
-    permission: 'campaigns',
+{
+    label: 'User Management',
+    path: '/users',
+    icon: Users2,
+    permission: 'users',
   },
   {
     label: 'Leads',
-    path: '/commingsoon',
+    path: '/leads',
     icon: ListCheck,
     permission: 'leads',
   },
+  {
+    label: 'Telecaller List',
+    path: '/telecallers',
+    icon: CircleUser,
+    permission: 'telecallers',
+  },
+  {
+    label: 'User Approval',
+    path: '/user-approval',
+    icon: CheckCircle2,
+    permission: 'userApproval',
+  },
+  REPORTS_ITEM,
 ]
 
 const SALES_STATUS_MENU = [
@@ -120,6 +152,7 @@ const Sidebar = ({
   onToggleCollapse,
 }) => {
   const location = useLocation()
+  const { role: authRole } = useAuth()
   const [user, setUser] = useState(null)
   const [salesMenuOpen, setSalesMenuOpen] = useState(false)
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
@@ -180,7 +213,7 @@ const Sidebar = ({
 
   // Menu based on user role
   const navItems = useMemo(() => {
-    const role = user?.role?.toLowerCase()
+    const role = String(user?.role || authRole || '').toLowerCase()
 
     if (role === 'admin') {
       return ADMIN_MENU
@@ -190,7 +223,7 @@ const Sidebar = ({
       return MANAGER_MENU
     }
 
-    if (role === 'tl') {
+    if (role === 'tl' || role === 'teamleader' || role === 'team leader') {
       return TL_MENU
     }
 
@@ -213,7 +246,7 @@ const Sidebar = ({
     }
 
     return ROLE_MENUS[role] || []
-  }, [salesTarget.campaignId, user?.role])
+  }, [authRole, salesTarget.campaignId, user?.role])
 
   // Logout
   const handleConfirmLogout = async () => {
@@ -273,16 +306,16 @@ const Sidebar = ({
           transition-[width,transform]
           duration-300
           ease-in-out
-          w-[280px]
+          w-[17rem]
 
           ${open ? 'translate-x-0' : '-translate-x-full'}
 
           md:translate-x-0
 
-          ${collapsed ? 'md:w-[82px]' : 'md:w-[280px]'}
+          ${collapsed ? 'md:w-[5.125rem]' : 'md:w-[17rem]'}
         `}
       >
-        <div className="flex h-full flex-col px-4 py-5">
+        <div className="flex h-full flex-col px-3 py-4">
 
           {/* Header */}
           <div
@@ -308,11 +341,11 @@ const Sidebar = ({
                 </div>
               ) : (
                 <div className="mb-4 text-center">
-                  <div className=" mx-auto mb-3 ml-7 flex h-16 w-[140px] items-center justify-center transition-transform duration-300 hover:scale-105">
+                  <div className=" mx-auto mb-1 ml-7 flex h-11 w-[5.5rem] items-center justify-center transition-transform duration-300 hover:scale-105">
                     <img
                       src="/final_logo.png"
                       alt="Apna India logo"
-                      className="object-contain"
+                      className="h-full w-full object-contain"
                     />
                   </div>
                 </div>
@@ -340,7 +373,7 @@ const Sidebar = ({
               className="
               absolute
               -right-3
-              top-[68px]
+              top-[3rem]
               z-50
               hidden
               h-7
@@ -415,7 +448,7 @@ const Sidebar = ({
                         group
                         relative
                         flex
-                        min-h-[46px]
+                        min-h-[2.5rem]
                         shrink-0
                         items-center
                         rounded-xl
@@ -502,7 +535,7 @@ const Sidebar = ({
                     group
                     relative
                     flex
-                    min-h-[46px]
+                    min-h-[2.5rem]
                     shrink-0
                     items-center
                     rounded-xl

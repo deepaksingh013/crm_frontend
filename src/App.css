@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 :root {
   --bg: #f5f7fb;
   --surface: #ffffff;
@@ -43,9 +42,9 @@ body {
 .input-field {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 1.25rem;
+  border-radius: 0.75rem;
   background: var(--surface-alt);
-  padding: 0.9rem 1rem;
+  padding: 0.6rem 0.85rem;
   color: var(--text);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
@@ -59,7 +58,7 @@ body {
 
 .form-card {
   border: 1px solid var(--border);
-  border-radius: 1.75rem;
+  border-radius: 1.25rem;
   background: var(--surface);
 }
 
@@ -80,13 +79,107 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.45rem 0.9rem;
+  padding: 0.3rem 0.7rem;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface-alt);
   color: var(--text);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
+}
+
+/* ---------- Shared table design ----------
+   Every table in the app uses .app-table-card + .app-table so headers,
+   rows, spacing and hover look the same everywhere. */
+.app-table-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 36, 0.05);
+}
+
+.app-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.app-table thead th {
+  padding: 0.625rem 0.875rem;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* colspan cells (loading / empty messages) keep their own padding */
+.app-table tbody td:not([colspan]) {
+  padding: 0.55rem 0.875rem;
+  vertical-align: middle;
+}
+
+.app-table tbody tr:not(:first-child) > td {
+  border-top: 1px solid var(--border);
+}
+
+.app-table tbody tr:not(.app-table-skeleton):hover > td:not([colspan]) {
+  background: rgba(11, 56, 255, 0.035);
+}
+
+.app-table tbody tr.app-table-skeleton > td {
+  padding-top: 0.8rem;
+  padding-bottom: 0.8rem;
+}
+
+/* Small primary action button used inside table rows (View / Update) */
+.app-table-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.375rem;
+  background: var(--primary);
+  padding: 0.3rem 0.65rem;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 36, 0.08);
+  transition: background-color 0.15s ease;
+}
+
+.app-table-btn:hover {
+  background: var(--primary-hover);
+}
+
+/* Count pill used for totals inside tables */
+.app-table-count {
+  display: inline-flex;
+  min-width: 1.75rem;
+  justify-content: center;
+  border-radius: 999px;
+  background: #eff6ff;
+  padding: 0.1rem 0.55rem;
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 767px) {
+  /* lead tables turn into cards on mobile; keep their card spacing */
+  .lead-table.app-table tbody td:not([colspan]) {
+    padding: 0.55rem 0.85rem;
+  }
+
+  .lead-table.app-table tbody tr:not(:first-child) > td {
+    border-top: 0;
+  }
 }
 
 /* Report helpers */

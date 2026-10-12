@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import LeadStatusUpdateModal from './LeadStatusUpdateModal';
 import {createSalesManagementRoute, DEFAULT_SALES_STATUS, normalizeSalesStatus, resolveSalesManagementTarget, SALES_STATUS_LABELS,} from './salesManagementRoutes';
+import TableSkeleton from '../../../components/table/TableSkeleton';
 
 const API_URL =process.env.REACT_APP_API_URL;
 const PAGE_SIZE = 10;
@@ -396,22 +397,19 @@ const SalesManagment = () => {
 
   if (showCampaignPicker) {
     return (
-      <main className="min-h-screen bg-slate-50">
-        <div className="mx-auto min-h-screen w-full max-w-[1400px] px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
-          <div className="mb-5 sm:mb-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">
-              Sales Management
-            </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+      <main className="min-w-0">
+        <div className="w-full">
+          <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
               Select Campaign
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="text-xs text-slate-500">
               Choose a campaign to view the relevant sales leads.
             </p>
           </div>
 
           {!loading && error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-5 sm:p-6">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h2 className="text-base font-semibold text-red-700">
@@ -432,42 +430,42 @@ const SalesManagment = () => {
           )}
 
           {!loading && !error && campaigns.length === 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white px-5 py-12 text-center shadow-sm sm:px-8">
+            <div className="rounded-xl border border-gray-200 bg-white px-5 py-8 text-center shadow-sm">
               <h2 className="mt-4 text-base font-semibold text-gray-700">No campaigns found</h2>
               <p className="mt-1 text-sm text-gray-400">There are no campaigns available right now.</p>
             </div>
           )}
 
           {campaigns.length > 0 && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {campaigns.map((campaign) => (
                 <div
                   key={campaign.id}
                   onClick={() => openCampaign(campaign)}
-                  className="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-teal-200 hover:shadow-lg"
+                  className="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
                 >
                   <div className="absolute left-0 right-0 top-0 h-[3px] bg-gradient-to-r from-teal-700 to-purple-600" />
-                  <div className="p-4 sm:p-5">
-                    <h2 className="truncate pr-2 text-base font-bold text-slate-900 sm:text-lg">
+                  <div className="p-3.5">
+                    <h2 className="truncate pr-2 text-sm font-bold capitalize text-slate-900">
                       {campaign.name}
                     </h2>
                     <div className="mt-2 flex items-baseline gap-2">
-                      <span className="text-3xl font-bold leading-none text-teal-700 sm:text-[32px]">
+                      <span className="text-2xl font-bold leading-none text-teal-700">
                         {campaign.totalLeads ?? 0}
                       </span>
-                        <span className="text-xs text-slate-400 sm:text-sm">Total Leads</span>
+                        <span className="text-xs text-slate-400">Total Leads</span>
                     </div>
-                    <div className="my-4 border-t border-gray-100" />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="my-2.5 border-t border-gray-100" />
+                    <div className="grid grid-cols-2 gap-1.5">
                       <StatusBox label="Pending" count={campaign.pending} className="border-sky-100 bg-sky-50 text-sky-700" />
                       <StatusBox label="Complete" count={campaign.complete} className="border-green-100 bg-green-50 text-green-700" />
                       <StatusBox label="Rejected" count={campaign.rejected} className="border-red-100 bg-red-50 text-red-700" />
                       <StatusBox label="Holding" count={campaign.holding} className="border-cyan-100 bg-cyan-50 text-cyan-700" />
                     </div>
-                    <div className="mt-2">
+                    <div className="mt-1.5">
                       <StatusBox label="Not Connected" count={campaign.notConnected} className="border-gray-100 bg-gray-50 text-gray-700" />
                     </div>
-                    <div className="my-4 border-t border-gray-100" />
+                    <div className="my-2.5 border-t border-gray-100" />
                     <div className="text-center text-xs font-medium text-slate-400 transition-colors group-hover:text-teal-700">
                       Click to view sales management
                     </div>
@@ -482,40 +480,35 @@ const SalesManagment = () => {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto w-full max-w-[1400px] px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Sales Management
-              </p>
-              <h1 className="mt-1 break-words text-2xl font-bold text-slate-900 sm:text-3xl">
-                {selectedCampaign?.name || 'Campaign Sales'}
-              </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                {status ? `Showing ${getStatusLabel(status)} leads` : 'Manage and update your campaign leads.'}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/sales-management')}
-              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
-            >
-              Change Campaign
-            </button>
+    <main className="min-w-0">
+      <div className="w-full space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <h1 className="break-words text-xl font-bold capitalize tracking-tight text-slate-900">
+              {selectedCampaign?.name || 'Campaign Sales'}
+            </h1>
+            <p className="text-xs text-slate-500">
+              {status ? `Showing ${getStatusLabel(status)} leads` : 'Manage and update your campaign leads.'}
+            </p>
           </div>
+
+          <button
+            type="button"
+            onClick={() => navigate('/sales-management')}
+            className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
+          >
+            Change Campaign
+          </button>
         </div>
 
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-5 sm:p-5">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Lead Details</h2>
-                <p className="mt-0.5 text-xs text-slate-500">{displayedRange}</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
+          <div className="mb-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-baseline gap-2 px-1">
+              <h2 className="text-sm font-bold text-slate-900">Lead Details</h2>
+                <p className="text-xs text-slate-500">{displayedRange}</p>
             </div>
 
-            <div className="flex max-w-full gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:justify-end sm:overflow-visible sm:pb-0">
+            <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-lg bg-[var(--surface-alt)] p-0.5 sm:flex-wrap sm:justify-end sm:overflow-visible">
               {Object.entries(SALES_STATUS_LABELS).map(([statusKey, label]) => {
                 const isActive = normalizeSalesStatus(status) === statusKey;
 
@@ -527,10 +520,10 @@ const SalesManagment = () => {
                       setPage(1);
                       navigate(createSalesManagementRoute(campaignId, statusKey));
                     }}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
                       isActive
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        ? 'bg-white text-[var(--primary)] shadow-sm ring-1 ring-[var(--border)]'
+                        : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
                     {label}
@@ -541,7 +534,7 @@ const SalesManagment = () => {
           </div>
 
           {!loading && error && (
-            <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="mb-3 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               <span className="font-bold">!</span>
               <div>
                 <p className="font-semibold">Something went wrong</p>
@@ -551,16 +544,31 @@ const SalesManagment = () => {
           )}
 
           {loading && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-10 text-center">
-              <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
-              <p className="mt-3 text-sm text-gray-500">Loading leads...</p>
+            <div className="app-table-card">
+              <div className="overflow-x-auto">
+                <table className="app-table min-w-full">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Pincode</th>
+                      <th>Status</th>
+                      <th className="text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <TableSkeleton columns={6} />
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {!loading && !error && leads.length === 0 && (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-xl text-gray-400">—</div>
-              <p className="mt-3 text-sm font-semibold text-gray-600">No {getStatusLabel(status)} leads found</p>
+            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+              <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-base text-gray-400">—</div>
+              <p className="mt-2 text-sm font-semibold text-gray-600">No {getStatusLabel(status)} leads found</p>
               <p className="mt-1 text-xs text-gray-400">
                 There are no {getStatusLabel(status).toLowerCase()} leads available for this campaign.
               </p>
@@ -568,17 +576,17 @@ const SalesManagment = () => {
           )}
 
           {!loading && leads.length > 0 && (
-            <div className="lead-table-scroll overflow-hidden rounded-lg border border-slate-200">
+            <div className="lead-table-scroll app-table-card">
               <div className="overflow-x-auto">
-                <table className="lead-table min-w-full border-collapse text-left text-sm">
+                <table className="lead-table app-table min-w-full">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50 text-gray-500">
-                      <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Date</th>
-                      <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Name</th>
-                      <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Phone</th>
-                      <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Pincode</th>
-                      <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold">Status</th>
-                      <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold">Action</th>
+                    <tr>
+                      <th>Date</th>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Pincode</th>
+                      <th>Status</th>
+                      <th className="text-right">Action</th>
                     </tr>
                   </thead>  
 
@@ -592,11 +600,11 @@ const SalesManagment = () => {
                       const leadId = lead._id || lead.id || index;
 
                       return (
-                        <tr key={leadId} className="border-b border-gray-100 transition last:border-b-0 hover:bg-slate-50">
-                          <td data-label="Last activity" className="whitespace-nowrap px-3 py-3 text-gray-600">{formatDateTime(activityDate)}</td>
-                          <td data-label="Name" className="whitespace-nowrap px-3 py-3">
+                        <tr key={leadId}>
+                          <td data-label="Last activity" className="whitespace-nowrap text-gray-600">{formatDateTime(activityDate)}</td>
+                          <td data-label="Name" className="whitespace-nowrap">
                             <div className="flex items-center gap-2.5">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-xs font-bold text-red-600">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-[0.7rem] font-bold text-red-600">
                                 {String(leadName)
                                   .split(' ')
                                   .map((word) => word[0])
@@ -607,18 +615,18 @@ const SalesManagment = () => {
                               <span className="font-semibold text-gray-800">{leadName}</span>
                             </div>
                           </td>
-                          <td data-label="Phone" className="whitespace-nowrap px-3 py-3 text-gray-600">{leadPhone}</td>
-                          <td data-label="Pincode" className="whitespace-nowrap px-3 py-3 text-gray-600">{leadPincode}</td>
-                          <td data-label="Status" className="whitespace-nowrap px-3 py-3">
+                          <td data-label="Phone" className="whitespace-nowrap text-gray-600">{leadPhone}</td>
+                          <td data-label="Pincode" className="whitespace-nowrap text-gray-600">{leadPincode}</td>
+                          <td data-label="Status" className="whitespace-nowrap">
                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusStyle(leadStatus)}`}>
                               {getStatusLabel(leadStatus)}
                             </span>
                           </td>
-                          <td data-label="Action" className="whitespace-nowrap px-3 py-3 text-right">
+                          <td data-label="Action" className="whitespace-nowrap text-right">
                             <button
                               type="button"
                               onClick={() => openStatusModal(lead)}
-                              className="rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]"
+                              className="app-table-btn active:scale-[0.98]"
                             >
                               Update
                             </button>
@@ -633,7 +641,7 @@ const SalesManagment = () => {
           )}
 
           {!loading && !error && totalLeads > 0 && (
-            <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-2.5 flex flex-col gap-2 border-t border-slate-100 px-1 pt-2.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-slate-500">Page {page} of {totalPages}</p>
               <div className="flex items-center gap-2">
                 <button
@@ -641,11 +649,11 @@ const SalesManagment = () => {
                   onClick={() => goToPage(page - 1)}
                   disabled={page === 1}
                   aria-label="Previous page"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft size={17} />
                 </button>
-                <span className="min-w-20 text-center text-sm font-semibold text-slate-700" aria-live="polite">
+                <span className="min-w-16 text-center text-xs font-semibold text-slate-700" aria-live="polite">
                   {page} / {totalPages}
                 </span>
                 <button
@@ -653,7 +661,7 @@ const SalesManagment = () => {
                   onClick={() => goToPage(page + 1)}
                   disabled={page === totalPages}
                   aria-label="Next page"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronRight size={17} />
                 </button>
@@ -676,10 +684,10 @@ const SalesManagment = () => {
 
 function StatusBox({ label, count, className }) {
   return (
-    <div className={`rounded-lg border px-3 py-2.5 ${className}`}>
+    <div className={`rounded-md border px-2.5 py-1.5 ${className}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-[11px] font-semibold uppercase tracking-wide">{label}</span>
-        <span className="text-base font-bold">{count ?? 0}</span>
+        <span className="text-sm font-bold">{count ?? 0}</span>
       </div>
     </div>
   );
