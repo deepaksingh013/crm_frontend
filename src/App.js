@@ -30,6 +30,10 @@ import TcList from './pages/shared/telecallers/TcList'
 import TcDetails from './pages/shared/telecallers/TcDetails'
 import UserApproval from './pages/shared/user-approval/UserApproval'
 import { useAuth } from './hooks/useAuth'
+import TrialExpiredModal from './components/TrialExpiredModal'
+
+// Set to false once the client's Phase 2 payment is received
+const TRIAL_EXPIRED = true
 
 // Admin / manager / TL dashboards are hidden for now (static),
 // so they go straight to the first sidebar menu: User Management.
@@ -89,7 +93,11 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen w-full bg-[var(--bg)]">
+      <div
+        className={`min-h-screen w-full bg-[var(--bg)] ${TRIAL_EXPIRED ? 'pointer-events-none select-none blur-[6px]' : ''}`}
+        inert={TRIAL_EXPIRED}
+        aria-hidden={TRIAL_EXPIRED}
+      >
         <Routes>
           <Route
             path="/login"
@@ -261,6 +269,7 @@ function App() {
           />
         </Routes>
       </div>
+      {TRIAL_EXPIRED && <TrialExpiredModal />}
     </BrowserRouter >
   )
 }
